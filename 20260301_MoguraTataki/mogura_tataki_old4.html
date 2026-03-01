@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>もぐらたたき</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kosugi+Maru&display=swap');
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --sky: #87CEEB;
+  --ground: #5D8A3C;
+  --hole: #3e2723;
+}
+
+body {
+  font-family:'Kosugi Maru',sans-serif;
+  background:var(--sky);
+  min-height:100vh;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  user-select:none; overflow:hidden;
+}
+
+body::before {
+  content:'';
+  position:fixed; bottom:0; left:0; right:0;
+  height:30%; background:var(--ground); z-index:0;
+}
+body::after {
+  content:'☁  ☁  ☁';
+  position:fixed; top:20px; left:8%;
+  font-size:1.6rem; color:white; opacity:.8; z-index:0; letter-spacing:32px;
+}
+
+/* ========== SCREENS ========== */
+.screen { position:relative; z-index:1; text-align:center; width:100%; }
+.hidden { display:none !important; }
+
+/* ========== TITLE SCREEN ========== */
+#title-screen h1 {
+  font-size:3.5rem; color:white;
+  text-shadow:3px 3px 0 rgba(0,0,0,0.3);
+  margin-bottom:8px;
+}
+#title-screen .subtitle {
+  font-size:1.1rem; color:rgba(255,255,255,.85);
+  margin-bottom:24px;
+}
+
+.diff-btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:16px; }
+.diff-btn {
+  padding:14px 28px; font-size:1.4rem;
+  font-family:'Kosugi Maru',sans-serif;
+  border:none; border-radius:40px; cursor:pointer;
+  box-shadow:0 5px 0 rgba(0,0,0,0.25);
+  transition:transform .1s, box-shadow .1s;
+}
+.diff-btn:active { transform:translateY(4px); box-shadow:0 1px 0 rgba(0,0,0,.25); }
+.diff-btn.easy   { background:#66bb6a; color:white; }
+.diff-btn.normal { background:#ff7043; color:white; }
+.diff-btn.hard   { background:#e53935; color:white; }
+.diff-btn.vs     { background:#7e57c2; color:white; }
+
+#hi-score-display {
+  font-size:1rem; color:white;
+  text-shadow:1px 1px 2px rgba(0,0,0,.3);
+  margin-top:8px;
+}
+
+/* ========== GAME SCREEN ========== */
+#game-wrap { position:relative; z-index:1; text-align:center; }
+
+#scoreboard {
+  display:flex; gap:12px; justify-content:center;
+  align-items:center; margin-bottom:10px; flex-wrap:wrap;
+}
+.score-box {
+  background:white; border-radius:14px;
+  padding:6px 18px;
+  box-shadow:0 4px 10px rgba(0,0,0,.2);
+  font-size:1.1rem;
+}
+.score-box span { font-size:1.6rem; font-weight:bold; color:#e64a19; }
+.score-box.p2 span { color:#7e57c2; }
+
+/* Fever bar */
+#fever-wrap {
+  width:340px; max-width:90vw; margin:0 auto 8px;
+  background:rgba(255,255,255,.4); border-radius:20px;
+  height:18px; overflow:hidden; display:none;
+}
+#fever-bar {
+  height:100%; width:0%;
+  background:linear-gradient(90deg,#ff6f00,#ffca28,#ff6f00);
+  background-size:200% 100%;
+  border-radius:20px;
+  transition:width .2s;
+  animation:feverShimmer 1s linear infinite;
+}
+@keyframes feverShimmer {
+  0%{background-position:0% 0%} 100%{background-position:200% 0%}
+}
+#fever-label {
+  font-size:.85rem; color:white; text-shadow:1px 1px 2px rgba(0,0,0,.4);
+  margin-bottom:2px; display:none;
+}
+
+/* FEVER overlay */
+#fever-overlay {
+  position:fixed; inset:0; z-index:30; pointer-events:none;
+  border:8px solid transparent; display:none;
+  animation:feverBorder 0.4s linear infinite;
+}
+@keyframes feverBorder {
+  0%{border-color:#ff6f00;} 25%{border-color:#ffca28;} 50%{border-color:#e91e63;} 75%{border-color:#7c4dff;} 100%{border-color:#ff6f00;}
+}
+
+#legend {
+  display:flex; gap:10px; justify-content:center;
+  margin-bottom:8px; font-size:.8rem;
+  color:white; text-shadow:1px 1px 2px rgba(0,0,0,.4);
+  flex-wrap:wrap;
+}
+.legend-item { display:flex; align-items:center; gap:3px; }
+
+/* Grid */
+#grid {
+  display:grid;
+  grid-template-columns:repeat(4,90px);
+  grid-template-rows:repeat(3,90px);
+  gap:10px; margin:0 auto;
+}
+/* VS mode: two grids side by side */
+#grid-wrap { display:flex; gap:20px; justify-content:center; }
+#grid2 {
+  display:grid;
+  grid-template-columns:repeat(4,90px);
+  grid-template-rows:repeat(3,90px);
+  gap:10px; margin:0 auto;
+}
+
+.hole {
+  width:90px; height:90px;
+  background:var(--hole); border-radius:50%;
+  position:relative; overflow:hidden; cursor:pointer;
+  box-shadow:inset 0 6px 16px rgba(0,0,0,.5),0 4px 8px rgba(0,0,0,.3);
+  transition:transform .05s;
+}
+.hole:active { transform:scale(.93); }
+.hole.p2-hole { box-shadow:inset 0 6px 16px rgba(0,0,0,.5),0 4px 8px rgba(126,87,194,.4); }
+
+.mole {
+  position:absolute; bottom:-110%; left:50%;
+  transform:translateX(-50%);
+  font-size:0; line-height:1;
+  transition:bottom .13s ease-out; cursor:pointer;
+}
+.mole::after { font-size:54px; display:block; }
+.mole.up { bottom:3%; }
+.mole.hit { animation:moleHit .28s ease-out forwards !important; }
+@keyframes moleHit {
+  0%  { transform:translateX(-50%) scale(1) rotate(0deg); opacity:1; }
+  100%{ transform:translateX(-50%) scale(.1) rotate(360deg); opacity:0; }
+}
+
+/* Mole types */
+.mole.type-normal::after { content:'🐹'; }
+.mole.type-quick::after  { content:'🐭'; }
+.mole.type-frog::after   { content:'🐸'; }
+.mole.type-clock::after  { content:'⏰'; }
+.mole.type-bomb::after   { content:'💣'; }
+.mole.type-ghost::after  { content:'👻'; }
+
+.mole.type-frog::after {
+  animation:frogGlow 0.8s ease-in-out infinite alternate;
+}
+@keyframes frogGlow {
+  from { filter:drop-shadow(0 0 4px #00e676); }
+  to   { filter:drop-shadow(0 0 12px #00e676); }
+}
+.mole.type-clock::after {
+  animation:clockPulse 0.5s ease-in-out infinite alternate;
+}
+@keyframes clockPulse {
+  from { filter:drop-shadow(0 0 4px #29b6f6); }
+  to   { filter:drop-shadow(0 0 14px #29b6f6); }
+}
+.mole.type-bomb::after {
+  animation:bombShake 0.3s ease-in-out infinite;
+}
+@keyframes bombShake {
+  0%,100%{ transform:translateX(0); }
+  25%    { transform:translateX(-3px); }
+  75%    { transform:translateX(3px); }
+}
+
+/* Buttons */
+#message {
+  font-size:1.8rem; font-weight:bold;
+  color:white; text-shadow:2px 2px 0 rgba(0,0,0,.3);
+  min-height:48px; margin-top:10px;
+}
+.action-btn {
+  margin-top:12px; padding:14px 46px;
+  font-size:1.6rem; font-family:'Kosugi Maru',sans-serif;
+  background:#ff7043; color:white; border:none;
+  border-radius:50px; cursor:pointer;
+  box-shadow:0 5px 0 #bf360c;
+  transition:transform .1s,box-shadow .1s;
+}
+.action-btn:hover { transform:translateY(-2px); box-shadow:0 7px 0 #bf360c; }
+.action-btn:active{ transform:translateY(4px);  box-shadow:0 1px 0 #bf360c; }
+
+/* ========== COUNTDOWN ========== */
+#countdown-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.55); z-index:50;
+  align-items:center; justify-content:center;
+}
+#countdown-overlay.show { display:flex; }
+#countdown-num {
+  font-size:11rem; color:white;
+  text-shadow:4px 4px 0 rgba(0,0,0,.4);
+  animation:popIn .4s ease-out;
+}
+@keyframes popIn {
+  0%  { transform:scale(.2); opacity:0; }
+  70% { transform:scale(1.25); }
+  100%{ transform:scale(1); opacity:1; }
+}
+
+/* ========== RESULT SCREEN ========== */
+#result-screen {
+  position:relative; z-index:1; text-align:center;
+}
+#result-title {
+  font-size:2.8rem; color:white;
+  text-shadow:3px 3px 0 rgba(0,0,0,.3);
+  margin-bottom:12px;
+}
+#result-scores {
+  display:flex; gap:20px; justify-content:center; margin-bottom:16px; flex-wrap:wrap;
+}
+.result-box {
+  background:white; border-radius:16px; padding:12px 28px;
+  box-shadow:0 4px 12px rgba(0,0,0,.2);
+  font-size:1.3rem;
+}
+.result-box .big { font-size:2.8rem; font-weight:bold; color:#e64a19; display:block; }
+.result-box .big.p2c { color:#7e57c2; }
+#new-record {
+  font-size:1.8rem; color:#ffca28; font-weight:bold;
+  text-shadow:2px 2px 0 rgba(0,0,0,.4); margin-bottom:8px;
+  display:none;
+}
+
+/* Result mole */
+#result-mole {
+  position:fixed; bottom:-280px; left:-20px;
+  font-size:0; z-index:10;
+  transition:bottom .75s cubic-bezier(.22,1,.36,1);
+  transform:rotate(-18deg); pointer-events:none;
+}
+#result-mole::after { content:'🐹'; font-size:180px; display:block; filter:drop-shadow(6px 6px 10px rgba(0,0,0,.35)); }
+#result-mole.show { bottom:10px; }
+
+/* Flash */
+#flash-overlay {
+  display:none; position:fixed; inset:0; z-index:200; pointer-events:none;
+}
+#flash-overlay.show { display:block; animation:flashAnim .6s ease-out forwards; }
+@keyframes flashAnim {
+  0%  { background:rgba(255,255,200,.95); }
+  40% { background:rgba(255,220,0,.6); }
+  100%{ background:rgba(255,220,0,0); }
+}
+
+/* Bang effects */
+.bang {
+  position:fixed; pointer-events:none; z-index:100;
+  animation:bangAnim .55s ease-out forwards;
+  transform-origin:center;
+}
+@keyframes bangAnim {
+  0%  { opacity:1; transform:scale(.2) translateY(0); }
+  40% { opacity:1; transform:scale(2.0) translateY(-15px); }
+  100%{ opacity:0; transform:scale(2.6) translateY(-60px); }
+}
+.bang-gold {
+  position:fixed; pointer-events:none; z-index:100;
+  animation:bangGoldAnim .8s ease-out forwards;
+}
+@keyframes bangGoldAnim {
+  0%  { opacity:1; transform:scale(.5) translateY(0) rotate(0deg); }
+  50% { opacity:1; transform:scale(1.8) translateY(-30px) rotate(180deg); }
+  100%{ opacity:0; transform:scale(.5) translateY(-80px) rotate(360deg); }
+}
+/* Bomb explosion */
+.bang-bomb {
+  position:fixed; pointer-events:none; z-index:100;
+  font-size:6rem;
+  animation:bombExp .6s ease-out forwards;
+}
+@keyframes bombExp {
+  0%  { opacity:1; transform:scale(.3); }
+  50% { opacity:1; transform:scale(2.5); }
+  100%{ opacity:0; transform:scale(3); }
+}
+/* Time +effect */
+.bang-time {
+  position:fixed; pointer-events:none; z-index:100;
+  font-size:2rem; color:#29b6f6; font-weight:bold;
+  text-shadow:2px 2px 0 rgba(0,0,0,.3);
+  animation:timeUp .8s ease-out forwards;
+}
+@keyframes timeUp {
+  0%  { opacity:1; transform:translateY(0) scale(1); }
+  100%{ opacity:0; transform:translateY(-80px) scale(1.5); }
+}
+
+/* BGM button */
+#bgm-btn {
+  position:fixed; top:14px; right:14px; z-index:300;
+  background:white; border:none; border-radius:50%;
+  width:52px; height:52px; font-size:1.6rem;
+  cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.25);
+  transition:transform .1s;
+}
+#bgm-btn:active { transform:scale(.9); }
+
+/* VS player labels */
+.player-label {
+  font-size:1rem; color:white; font-weight:bold;
+  text-shadow:1px 1px 2px rgba(0,0,0,.4);
+  margin-bottom:4px;
+}
+
+/* Fever text popup */
+.fever-popup {
+  position:fixed; z-index:200; pointer-events:none;
+  top:30%; left:50%; transform:translateX(-50%);
+  font-size:4rem; font-weight:bold;
+  color:#ffca28; text-shadow:3px 3px 0 rgba(0,0,0,.4);
+  animation:feverPop .8s ease-out forwards;
+}
+@keyframes feverPop {
+  0%  { opacity:0; transform:translateX(-50%) scale(.3); }
+  30% { opacity:1; transform:translateX(-50%) scale(1.3); }
+  70% { opacity:1; transform:translateX(-50%) scale(1); }
+  100%{ opacity:0; transform:translateX(-50%) scale(.8) translateY(-40px); }
+}
+</style>
+</head>
+<body>
+
+<button id="bgm-btn" onclick="toggleBGM()" title="BGM">🎵</button>
+<div id="countdown-overlay"><div id="countdown-num">3</div></div>
+<div id="result-mole"></div>
+<div id="flash-overlay"></div>
+<div id="fever-overlay"></div>
+
+<!-- ===== TITLE SCREEN ===== -->
+<div id="title-screen" class="screen">
+  <h1>🐹 もぐらたたき</h1>
+  <div class="subtitle">むずかしさをえらんでね！</div>
+  <div class="diff-btns">
+    <button class="diff-btn easy"   onclick="startCountdown('easy')">😊 かんたん</button>
+    <button class="diff-btn normal" onclick="startCountdown('normal')">🎮 ふつう</button>
+    <button class="diff-btn hard"   onclick="startCountdown('hard')">🔥 むずかしい</button>
+  </div>
+  <div class="diff-btns">
+    <button class="diff-btn vs"     onclick="startCountdown('vs')">👥 二人たいせん</button>
+  </div>
+  <div id="hi-score-display">🏆 ハイスコア：よみこみちゅう…</div>
+</div>
+
+<!-- ===== GAME SCREEN ===== -->
+<div id="game-screen" class="screen hidden">
+  <div id="game-wrap">
+    <div id="scoreboard">
+      <div class="score-box" id="score-box-p1">🌟 <span id="score">0</span> てん</div>
+      <div class="score-box" id="score-box-p2" style="display:none">👥 <span id="score2">0</span> てん</div>
+      <div class="score-box">⏰ <span id="timer">50</span> びょう</div>
+    </div>
+    <div id="fever-label">🔥 フィーバーまであと…</div>
+    <div id="fever-wrap"><div id="fever-bar"></div></div>
+    <div id="legend">
+      <div class="legend-item">🐹 +1</div>
+      <div class="legend-item">🐭 はやい +1</div>
+      <div class="legend-item">🐸 カエル +3</div>
+      <div class="legend-item">⏰ +5びょう</div>
+      <div class="legend-item">💣 さけろ!</div>
+      <div class="legend-item">👻 ゆうれい +2</div>
+    </div>
+    <div id="grid-wrap">
+      <div>
+        <div id="p1-label" class="player-label" style="display:none">🟠 プレイヤー1</div>
+        <div id="grid"></div>
+      </div>
+      <div id="p2-area" style="display:none">
+        <div class="player-label" style="color:#ce93d8">🟣 プレイヤー2</div>
+        <div id="grid2"></div>
+      </div>
+    </div>
+    <div id="message"></div>
+    <button class="action-btn" id="quit-btn" onclick="quitGame()">🏠 タイトルへ</button>
+  </div>
+</div>
+
+<!-- ===== RESULT SCREEN ===== -->
+<div id="result-screen" class="screen hidden">
+  <div id="result-title">ゲームおわり！</div>
+  <div id="new-record">🎊 ニューレコード！！</div>
+  <div id="result-scores"></div>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <button class="action-btn" onclick="goTitle()">🏠 タイトルへ</button>
+    <button class="action-btn" style="background:#43a047;box-shadow:0 5px 0 #1b5e20" onclick="replayGame()">🔄 もう一かい</button>
+  </div>
+</div>
+
+<!-- Audio -->
+<audio id="bgm-title" src="sounds/bgm_001.mp3" loop></audio>
+<audio id="bgm-game"  src="sounds/bgm_002.mp3" loop></audio>
+<audio id="se-result" src="sounds/se_002.mp3"></audio>
+
+<script>
+// ==============================
+// CONFIG
+// ==============================
+const CONFIGS = {
+  easy:   { time:60, normalUp:[1400,2000], quickUp:600,  spawnInterval:[600,900],  simultaneous:2, goldChance:.04, quickChance:.10, bombChance:.00, ghostChance:.05, clockChance:.08 },
+  normal: { time:50, normalUp:[1100,1600], quickUp:380,  spawnInterval:[400,700],  simultaneous:4, goldChance:.05, quickChance:.20, bombChance:.05, ghostChance:.08, clockChance:.06 },
+  hard:   { time:40, normalUp:[700,1100],  quickUp:220,  spawnInterval:[200,450],  simultaneous:5, goldChance:.05, quickChance:.30, bombChance:.10, ghostChance:.10, clockChance:.04 },
+  vs:     { time:60, normalUp:[1100,1600], quickUp:380,  spawnInterval:[400,700],  simultaneous:4, goldChance:.05, quickChance:.20, bombChance:.05, ghostChance:.08, clockChance:.06 },
+};
+const HOLE_COUNT = 12;
+const FEVER_THRESHOLD = 15; // コンボ数でフィーバー
+const FEVER_DURATION  = 8000; // ms
+
+// ==============================
+// STATE
+// ==============================
+let cfg, mode;
+let score = 0, score2 = 0;
+let timeLeft = 50;
+let gameActive = false;
+let moleTimers = [];
+let countdownTimer = null;
+let lastHole = -1, lastHole2 = -1;
+let bgmEnabled = true;
+let combo = 0, feverActive = false, feverTimer = null;
+let hiScores = { easy:0, normal:0, hard:0 };
+
+// Load hi-scores from localStorage
+try {
+  const saved = JSON.parse(localStorage.getItem('mogura-hi') || '{}');
+  Object.assign(hiScores, saved);
+} catch(e) {}
+
+function saveHiScore(m, s) {
+  if (m === 'vs') return;
+  if (s > hiScores[m]) {
+    hiScores[m] = s;
+    try { localStorage.setItem('mogura-hi', JSON.stringify(hiScores)); } catch(e){}
+    return true;
+  }
+  return false;
+}
+
+// ==============================
+// DOM
+// ==============================
+const screens = {
+  title:  document.getElementById('title-screen'),
+  game:   document.getElementById('game-screen'),
+  result: document.getElementById('result-screen'),
+};
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.add('hidden'));
+  screens[name].classList.remove('hidden');
+}
+
+// Build grid
+function buildGrid(gridEl, count, clickHandler) {
+  gridEl.innerHTML = '';
+  const holes = [], moles = [];
+  for (let i = 0; i < count; i++) {
+    const hole = document.createElement('div');
+    hole.className = 'hole';
+    const mole = document.createElement('div');
+    mole.className = 'mole';
+    hole.appendChild(mole);
+    gridEl.appendChild(hole);
+    holes.push(hole);
+    moles.push(mole);
+    hole.addEventListener('pointerdown', (e) => clickHandler(i, e));
+  }
+  return { holes, moles };
+}
+
+let p1, p2;
+
+function setupGrids() {
+  const grid1El = document.getElementById('grid');
+  const grid2El = document.getElementById('grid2');
+  const p2Area  = document.getElementById('p2-area');
+  const p1Label = document.getElementById('p1-label');
+  const sb2     = document.getElementById('score-box-p2');
+
+  p1 = buildGrid(grid1El, HOLE_COUNT, (i,e) => onHoleClick(i,e,'p1'));
+
+  if (mode === 'vs') {
+    p2Area.style.display = 'block';
+    p1Label.style.display = 'block';
+    sb2.style.display = 'block';
+    grid1El.style.gridTemplateColumns = 'repeat(3,90px)';
+    grid2El.style.gridTemplateColumns = 'repeat(3,90px)';
+    grid1El.style.gridTemplateRows    = 'repeat(4,90px)';
+    grid2El.style.gridTemplateRows    = 'repeat(4,90px)';
+    p2 = buildGrid(grid2El, HOLE_COUNT, (i,e) => onHoleClick(i,e,'p2'));
+    p2.holes.forEach(h => h.classList.add('p2-hole'));
+  } else {
+    p2Area.style.display = 'none';
+    p1Label.style.display = 'none';
+    sb2.style.display = 'none';
+    grid1El.style.gridTemplateColumns = 'repeat(4,90px)';
+    grid1El.style.gridTemplateRows    = 'repeat(3,90px)';
+    p2 = null;
+  }
+}
+
+// ==============================
+// AUDIO
+// ==============================
+const bgmTitle = document.getElementById('bgm-title');
+const bgmGame  = document.getElementById('bgm-game');
+const seResult = document.getElementById('se-result');
+const bgmBtn   = document.getElementById('bgm-btn');
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function resumeCtx() { if (audioCtx.state==='suspended') audioCtx.resume(); }
+
+bgmTitle.play().catch(()=>{});
+document.addEventListener('pointerdown', function onFirst(){
+  resumeCtx();
+  if (bgmEnabled) bgmTitle.play().catch(()=>{});
+  document.removeEventListener('pointerdown', onFirst);
+},{once:true});
+
+function toggleBGM() {
+  resumeCtx();
+  bgmEnabled = !bgmEnabled;
+  bgmBtn.textContent = bgmEnabled ? '🎵' : '🔇';
+  if (!bgmEnabled) { bgmTitle.pause(); bgmGame.pause(); }
+  else {
+    if (gameActive) bgmGame.play().catch(()=>{});
+    else bgmTitle.play().catch(()=>{});
+  }
+}
+
+function playSFX(type) {
+  try {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    if (type==='hit')  { o.frequency.setValueAtTime(700,audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(180,audioCtx.currentTime+.18); g.gain.setValueAtTime(.45,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.22); o.start(); o.stop(audioCtx.currentTime+.22); }
+    if (type==='frog') { o.frequency.setValueAtTime(1200,audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(600,audioCtx.currentTime+.3); g.gain.setValueAtTime(.5,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.35); o.start(); o.stop(audioCtx.currentTime+.35); }
+    if (type==='bomb') { o.type='sawtooth'; o.frequency.setValueAtTime(120,audioCtx.currentTime); g.gain.setValueAtTime(.6,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.4); o.start(); o.stop(audioCtx.currentTime+.4); }
+    if (type==='clock'){ o.frequency.setValueAtTime(800,audioCtx.currentTime); o.frequency.setValueAtTime(1000,audioCtx.currentTime+.1); g.gain.setValueAtTime(.4,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.3); o.start(); o.stop(audioCtx.currentTime+.3); }
+    if (type==='fever'){ o.frequency.setValueAtTime(400,audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(1600,audioCtx.currentTime+.5); g.gain.setValueAtTime(.5,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.6); o.start(); o.stop(audioCtx.currentTime+.6); }
+    if (type==='count'){ o.frequency.value=440; g.gain.setValueAtTime(.3,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.3); o.start(); o.stop(audioCtx.currentTime+.3); }
+    if (type==='start'){ o.frequency.value=880; g.gain.setValueAtTime(.3,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.3); o.start(); o.stop(audioCtx.currentTime+.3); }
+  } catch(e){}
+}
+
+// ==============================
+// MOLE LOGIC
+// ==============================
+function getMoleType() {
+  const r = Math.random();
+  if (r < cfg.goldChance)                              return 'frog';
+  if (r < cfg.goldChance + cfg.clockChance)            return 'clock';
+  if (r < cfg.goldChance + cfg.clockChance + cfg.bombChance) return 'bomb';
+  if (r < cfg.goldChance + cfg.clockChance + cfg.bombChance + cfg.ghostChance) return 'ghost';
+  if (r < cfg.goldChance + cfg.clockChance + cfg.bombChance + cfg.ghostChance + cfg.quickChance) return 'quick';
+  return 'normal';
+}
+
+function getRandomIdx(moles, last) {
+  let idx, tries=0;
+  do { idx = Math.floor(Math.random()*moles.length); tries++; }
+  while ((idx===last || moles[idx].classList.contains('up')) && tries<30);
+  return idx;
+}
+
+function spawnMole(player) {
+  if (!gameActive) return;
+  const moles = player==='p1' ? p1.moles : p2.moles;
+  const isP2  = player==='p2';
+  const lastRef = isP2 ? lastHole2 : lastHole;
+
+  const idx  = getRandomIdx(moles, lastRef);
+  if (isP2) lastHole2=idx; else lastHole=idx;
+
+  const mole = moles[idx];
+  const type = getMoleType();
+  mole.dataset.type   = type;
+  mole.dataset.player = player;
+  mole.className = `mole type-${type}`;
+
+  requestAnimationFrame(()=>requestAnimationFrame(()=>mole.classList.add('up')));
+
+  const upTime = type==='quick' ? cfg.quickUp
+               : type==='frog'  ? 1200+Math.random()*400
+               : type==='clock' ? 1000+Math.random()*400
+               : type==='bomb'  ? 1500+Math.random()*500
+               : type==='ghost' ? 900+Math.random()*300
+               : cfg.normalUp[0]+Math.random()*(cfg.normalUp[1]-cfg.normalUp[0]);
+
+  const t = setTimeout(()=>{
+    if (mole.classList.contains('up')&&!mole.classList.contains('hit')) {
+      mole.classList.remove('up');
+      // ミスペナルティ(bomb以外で連続コンボリセット)
+      if (type!=='bomb') { /* コンボ継続 */ }
+    }
+    if (gameActive) {
+      const d = cfg.spawnInterval[0]+Math.random()*(cfg.spawnInterval[1]-cfg.spawnInterval[0]);
+      setTimeout(()=>spawnMole(player), d);
+    }
+  }, upTime);
+  moleTimers.push(t);
+}
+
+function spawnWave(player, count) {
+  for (let i=0; i<count; i++) setTimeout(()=>spawnMole(player), i*150);
+}
+
+// ==============================
+// HIT LOGIC
+// ==============================
+function onHoleClick(i, e, player) {
+  resumeCtx();
+  if (!gameActive) return;
+  const moles = player==='p1' ? p1.moles : p2.moles;
+  const mole  = moles[i];
+  if (!mole.classList.contains('up') || mole.classList.contains('hit')) return;
+
+  const type = mole.dataset.type;
+  whack(mole, type, player, e.clientX, e.clientY);
+}
+
+function whack(mole, type, player, x, y) {
+  mole.classList.remove('up');
+  mole.classList.add('hit');
+  setTimeout(()=>{ mole.className='mole'; mole.dataset.type=''; }, 300);
+
+  if (type==='bomb') {
+    // 爆弾は叩いたら減点
+    addScore(player, -3);
+    combo = 0; updateFeverBar();
+    playSFX('bomb');
+    showBangBomb(x,y);
+    return;
+  }
+
+  let pts = 1;
+  if (type==='frog')  pts=3;
+  if (type==='ghost') pts=2;
+  if (type==='clock') { addTime(5, x, y); playSFX('clock'); }
+  else { addScore(player, pts); }
+
+  // Combo & fever
+  if (type!=='clock') {
+    combo++;
+    updateFeverBar();
+    if (combo>=FEVER_THRESHOLD && !feverActive) triggerFever();
+  }
+
+  playSFX(type==='frog'?'frog':type==='bomb'?'bomb':'hit');
+  showBang(x, y, type, pts);
+}
+
+function addScore(player, pts) {
+  if (player==='p2') {
+    score2 = Math.max(0, score2+pts);
+    document.getElementById('score2').textContent = score2;
+  } else {
+    score = Math.max(0, score+pts);
+    document.getElementById('score').textContent = score;
+  }
+}
+
+function addTime(sec, x, y) {
+  timeLeft += sec;
+  document.getElementById('timer').textContent = timeLeft;
+  const el = document.createElement('div');
+  el.className='bang-time'; el.textContent=`+${sec}びょう！`;
+  el.style.left=(x-60)+'px'; el.style.top=(y-40)+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),800);
+}
+
+// ==============================
+// FEVER
+// ==============================
+function updateFeverBar() {
+  const pct = Math.min(100, (combo/FEVER_THRESHOLD)*100);
+  document.getElementById('fever-bar').style.width = pct+'%';
+}
+
+function triggerFever() {
+  feverActive = true;
+  playSFX('fever');
+
+  const pop = document.createElement('div');
+  pop.className='fever-popup'; pop.textContent='🔥 フィーバー！！ 🔥';
+  document.body.appendChild(pop);
+  setTimeout(()=>pop.remove(),800);
+
+  document.getElementById('fever-overlay').style.display='block';
+
+  // During fever: score × 2 temporarily — handled by flag
+  clearTimeout(feverTimer);
+  feverTimer = setTimeout(()=>{
+    feverActive=false;
+    combo=0; updateFeverBar();
+    document.getElementById('fever-overlay').style.display='none';
+  }, FEVER_DURATION);
+}
+
+// ==============================
+// BANG EFFECTS
+// ==============================
+function showBang(x,y,type,pts) {
+  if (type==='frog') {
+    ['🐸','💚','⭐','✨','🌟'].forEach((em,idx)=>{
+      const el=document.createElement('div');
+      el.className='bang-gold'; el.textContent=em;
+      el.style.left=(x-28+(idx-2)*18)+'px'; el.style.top=(y-28)+'px';
+      el.style.animationDelay=(idx*.05)+'s';
+      document.body.appendChild(el); setTimeout(()=>el.remove(),900);
+    });
+    const pt=document.createElement('div');
+    pt.className='bang'; pt.textContent=`+3🐸`;
+    pt.style.left=(x-44)+'px'; pt.style.top=(y-60)+'px'; pt.style.fontSize='2.5rem';
+    document.body.appendChild(pt); setTimeout(()=>pt.remove(),560);
+  } else if (type==='ghost') {
+    const el=document.createElement('div');
+    el.className='bang'; el.textContent='👻+2';
+    el.style.left=(x-44)+'px'; el.style.top=(y-44)+'px'; el.style.fontSize='2.8rem';
+    document.body.appendChild(el); setTimeout(()=>el.remove(),560);
+  } else {
+    const emojis = feverActive
+      ? ['🔥','⭐','✨','🌟','💥','🎆']
+      : ['💥','⭐','✨','🌟','💫'];
+    const el=document.createElement('div');
+    el.className='bang';
+    el.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+    el.style.fontSize= feverActive ? '7rem' : '5.5rem';
+    el.style.left=(x-44)+'px'; el.style.top=(y-44)+'px';
+    document.body.appendChild(el); setTimeout(()=>el.remove(),560);
+  }
+}
+
+function showBangBomb(x,y) {
+  const el=document.createElement('div');
+  el.className='bang-bomb'; el.textContent='💥';
+  el.style.left=(x-48)+'px'; el.style.top=(y-48)+'px';
+  document.body.appendChild(el); setTimeout(()=>el.remove(),600);
+  // screen shake
+  document.body.style.transform='translateX(6px)';
+  setTimeout(()=>document.body.style.transform='translateX(-6px)',60);
+  setTimeout(()=>document.body.style.transform='',120);
+}
+
+// ==============================
+// COUNTDOWN & GAME FLOW
+// ==============================
+function startCountdown(diff) {
+  resumeCtx();
+  mode = diff;
+  cfg  = CONFIGS[diff];
+
+  // Stop title BGM
+  bgmTitle.pause(); bgmTitle.currentTime=0;
+
+  // Reset state
+  score=0; score2=0; timeLeft=cfg.time;
+  combo=0; feverActive=false;
+  document.getElementById('score').textContent=0;
+  document.getElementById('score2').textContent=0;
+  document.getElementById('timer').textContent=cfg.time;
+  document.getElementById('fever-bar').style.width='0%';
+  document.getElementById('fever-overlay').style.display='none';
+  document.getElementById('result-mole').classList.remove('show');
+
+  // Build grids
+  setupGrids();
+  showScreen('game');
+
+  // Fever bar visibility
+  const feverWrap  = document.getElementById('fever-wrap');
+  const feverLabel = document.getElementById('fever-label');
+  if (diff!=='easy') { feverWrap.style.display='block'; feverLabel.style.display='block'; }
+  else               { feverWrap.style.display='none';  feverLabel.style.display='none';  }
+
+  // Countdown
+  const overlay = document.getElementById('countdown-overlay');
+  const numEl   = document.getElementById('countdown-num');
+  overlay.classList.add('show');
+  let count=3;
+
+  function flash(text,isStart){
+    numEl.textContent=text;
+    numEl.style.animation='none'; void numEl.offsetWidth;
+    numEl.style.animation='popIn .4s ease-out';
+    playSFX(isStart?'start':'count');
+  }
+  flash(count);
+  const cdInt=setInterval(()=>{
+    count--;
+    if (count>0) { flash(count); }
+    else {
+      flash('スタート！',true);
+      clearInterval(cdInt);
+      setTimeout(()=>{ overlay.classList.remove('show'); startGame(); },700);
+    }
+  },1000);
+}
+
+function startGame() {
+  gameActive=true;
+  document.getElementById('message').textContent='たたけ！たたけ！';
+  if (bgmEnabled) bgmGame.play().catch(()=>{});
+
+  spawnWave('p1', cfg.simultaneous);
+  if (mode==='vs') spawnWave('p2', cfg.simultaneous);
+
+  countdownTimer=setInterval(()=>{
+    timeLeft--;
+    document.getElementById('timer').textContent=timeLeft;
+    if (timeLeft<=0) endGame();
+  },1000);
+}
+
+function endGame() {
+  gameActive=false;
+  clearInterval(countdownTimer);
+  clearTimeout(feverTimer);
+  moleTimers.forEach(clearTimeout);
+  moleTimers=[];
+  if (p1) p1.moles.forEach(m=>m.classList.remove('up'));
+  if (p2) p2.moles.forEach(m=>m.classList.remove('up'));
+
+  bgmGame.pause(); bgmGame.currentTime=0;
+  document.getElementById('fever-overlay').style.display='none';
+
+  // Result
+  const isNew = saveHiScore(mode, score);
+  buildResult(isNew);
+  showScreen('result');
+
+  setTimeout(()=>{
+    const fl=document.getElementById('flash-overlay');
+    fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show');
+    if (bgmEnabled) seResult.play().catch(()=>{});
+    setTimeout(()=>document.getElementById('result-mole').classList.add('show'),200);
+    setTimeout(()=>{ if(bgmEnabled) bgmTitle.play().catch(()=>{}); },1500);
+  },200);
+}
+
+function buildResult(isNew) {
+  let title='ゲームおわり！';
+  const nr=document.getElementById('new-record');
+  nr.style.display = isNew ? 'block' : 'none';
+
+  const wrap=document.getElementById('result-scores');
+  wrap.innerHTML='';
+
+  if (mode==='vs') {
+    const winner=score>score2?'🟠 P1のかち！':score2>score?'🟣 P2のかち！':'🤝 ひきわけ！';
+    document.getElementById('result-title').textContent=winner;
+    const b1=document.createElement('div'); b1.className='result-box';
+    b1.innerHTML=`🟠 P1<span class="big">${score}</span>てん`;
+    const b2=document.createElement('div'); b2.className='result-box';
+    b2.innerHTML=`🟣 P2<span class="big p2c">${score2}</span>てん`;
+    wrap.appendChild(b1); wrap.appendChild(b2);
+  } else {
+    document.getElementById('result-title').textContent = getResultMsg(score);
+    const b=document.createElement('div'); b.className='result-box';
+    b.innerHTML=`🌟 スコア<span class="big">${score}</span>てん`;
+    const b2=document.createElement('div'); b2.className='result-box';
+    b2.innerHTML=`🏆 ベスト<span class="big">${hiScores[mode]}</span>てん`;
+    wrap.appendChild(b); wrap.appendChild(b2);
+  }
+}
+
+function getResultMsg(s) {
+  if(s>=60) return '🏆 まさに伝説！！';
+  if(s>=45) return '🎖 すごい！天才！';
+  if(s>=30) return '🎉 よくできました！';
+  if(s>=15) return '😊 じょうずじょうず！';
+  return '🐹 もっとがんばろう！';
+}
+
+function quitGame() {
+  gameActive=false;
+  clearInterval(countdownTimer);
+  clearTimeout(feverTimer);
+  moleTimers.forEach(clearTimeout); moleTimers=[];
+  bgmGame.pause(); bgmGame.currentTime=0;
+  document.getElementById('fever-overlay').style.display='none';
+  goTitle();
+}
+
+function goTitle() {
+  document.getElementById('result-mole').classList.remove('show');
+  updateHiDisplay();
+  showScreen('title');
+  if (bgmEnabled) bgmTitle.play().catch(()=>{});
+}
+
+function replayGame() {
+  document.getElementById('result-mole').classList.remove('show');
+  seResult.pause(); seResult.currentTime=0;
+  startCountdown(mode);
+}
+
+function updateHiDisplay() {
+  const el=document.getElementById('hi-score-display');
+  el.innerHTML=`🏆 ハイスコア　かんたん:${hiScores.easy}　ふつう:${hiScores.normal}　むずかしい:${hiScores.hard}`;
+}
+
+// Init
+updateHiDisplay();
+</script>
+</body>
+</html>

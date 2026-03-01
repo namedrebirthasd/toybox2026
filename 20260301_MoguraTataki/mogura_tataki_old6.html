@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>もぐらたたき</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kosugi+Maru&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--sky:#87CEEB;--ground:#5D8A3C;--hole:#3e2723;}
+
+body{font-family:'Kosugi Maru',sans-serif;background:var(--sky);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;user-select:none;overflow:hidden;}
+body::before{content:'';position:fixed;bottom:0;left:0;right:0;height:30%;background:var(--ground);z-index:0;}
+body::after{content:'☁  ☁  ☁';position:fixed;top:20px;left:8%;font-size:1.6rem;color:white;opacity:.8;z-index:0;letter-spacing:32px;}
+
+.screen{position:relative;z-index:1;text-align:center;width:100%;}
+.hidden{display:none!important;}
+
+/* TITLE */
+#title-screen h1{font-size:3.5rem;color:white;text-shadow:3px 3px 0 rgba(0,0,0,.3);margin-bottom:8px;}
+#title-screen .subtitle{font-size:1.1rem;color:rgba(255,255,255,.85);margin-bottom:24px;}
+.diff-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
+.diff-btn{padding:14px 28px;font-size:1.4rem;font-family:'Kosugi Maru',sans-serif;border:none;border-radius:40px;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.25);transition:transform .1s,box-shadow .1s;}
+.diff-btn:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.25);}
+.diff-btn.easy{background:#66bb6a;color:white;}
+.diff-btn.normal{background:#ff7043;color:white;}
+.diff-btn.hard{background:#e53935;color:white;}
+.diff-btn.vs{background:#7e57c2;color:white;}
+#hi-score-display{font-size:.95rem;color:white;text-shadow:1px 1px 2px rgba(0,0,0,.3);margin-top:8px;line-height:1.8;}
+
+/* GAME */
+#scoreboard{display:flex;gap:12px;justify-content:center;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
+.score-box{background:white;border-radius:14px;padding:6px 18px;box-shadow:0 4px 10px rgba(0,0,0,.2);font-size:1.1rem;}
+.score-box span{font-size:1.6rem;font-weight:bold;color:#e64a19;}
+.score-box.p2box span{color:#7e57c2;}
+
+#fever-label{font-size:.8rem;color:white;text-shadow:1px 1px 2px rgba(0,0,0,.4);margin-bottom:2px;display:none;}
+#fever-wrap{width:340px;max-width:90vw;margin:0 auto 6px;background:rgba(255,255,255,.4);border-radius:20px;height:16px;overflow:hidden;display:none;}
+#fever-bar{height:100%;width:0%;background:linear-gradient(90deg,#ff6f00,#ffca28,#ff6f00);background-size:200% 100%;border-radius:20px;transition:width .2s;animation:feverShimmer 1s linear infinite;}
+@keyframes feverShimmer{0%{background-position:0% 0%}100%{background-position:200% 0%}}
+
+#fever-overlay{position:fixed;inset:0;z-index:30;pointer-events:none;border:8px solid transparent;display:none;animation:feverBorder .4s linear infinite;}
+@keyframes feverBorder{0%{border-color:#ff6f00;}25%{border-color:#ffca28;}50%{border-color:#e91e63;}75%{border-color:#7c4dff;}100%{border-color:#ff6f00;}}
+
+#legend{display:flex;gap:8px;justify-content:center;margin-bottom:8px;font-size:.78rem;color:white;text-shadow:1px 1px 2px rgba(0,0,0,.4);flex-wrap:wrap;}
+
+#grid-wrap{display:flex;gap:40px;justify-content:center;align-items:flex-start;}
+.player-area{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.player-banner{font-size:1rem;font-weight:bold;padding:4px 18px;border-radius:20px;margin-bottom:4px;}
+.p1-banner{background:#ff7043;color:white;box-shadow:0 3px 8px rgba(255,112,67,.5);}
+.p2-banner{background:#7e57c2;color:white;box-shadow:0 3px 8px rgba(126,87,194,.5);}
+.grid-panel{border-radius:16px;padding:10px;background:rgba(255,255,255,.15);backdrop-filter:blur(4px);}
+.grid-panel.p1-panel{border:3px solid #ff7043;box-shadow:0 0 16px rgba(255,112,67,.4);}
+.grid-panel.p2-panel{border:3px solid #7e57c2;box-shadow:0 0 16px rgba(126,87,194,.4);}
+.grid-panel.no-border{border:none;background:transparent;padding:0;}
+.grid{display:grid;gap:10px;}
+.hole{width:90px;height:90px;background:var(--hole);border-radius:50%;position:relative;overflow:hidden;cursor:pointer;box-shadow:inset 0 6px 16px rgba(0,0,0,.5),0 4px 8px rgba(0,0,0,.3);transition:transform .05s;}
+.hole:active{transform:scale(.93);}
+.mole{position:absolute;bottom:-110%;left:50%;transform:translateX(-50%);font-size:0;line-height:1;transition:bottom .13s ease-out;cursor:pointer;}
+.mole::after{font-size:52px;display:block;}
+.mole.up{bottom:3%;}
+.mole.hit{animation:moleHit .28s ease-out forwards!important;}
+@keyframes moleHit{0%{transform:translateX(-50%) scale(1) rotate(0deg);opacity:1;}100%{transform:translateX(-50%) scale(.1) rotate(360deg);opacity:0;}}
+.mole.type-normal::after{content:'🐹';}
+.mole.type-quick::after{content:'🐭';}
+.mole.type-frog::after{content:'🐸';}
+.mole.type-clock::after{content:'⏰';}
+.mole.type-bomb::after{content:'💣';}
+.mole.type-ghost::after{content:'👻';}
+.mole.type-frog::after{animation:frogGlow .8s ease-in-out infinite alternate;}
+@keyframes frogGlow{from{filter:drop-shadow(0 0 4px #00e676);}to{filter:drop-shadow(0 0 12px #00e676);}}
+.mole.type-clock::after{animation:clockPulse .5s ease-in-out infinite alternate;}
+@keyframes clockPulse{from{filter:drop-shadow(0 0 4px #29b6f6);}to{filter:drop-shadow(0 0 14px #29b6f6);}}
+.mole.type-bomb::after{animation:bombShake .3s ease-in-out infinite;}
+@keyframes bombShake{0%,100%{transform:translateX(0);}25%{transform:translateX(-3px);}75%{transform:translateX(3px);}}
+
+#message{font-size:1.8rem;font-weight:bold;color:white;text-shadow:2px 2px 0 rgba(0,0,0,.3);min-height:48px;margin-top:8px;}
+.action-btn{margin-top:12px;padding:13px 40px;font-size:1.5rem;font-family:'Kosugi Maru',sans-serif;background:#ff7043;color:white;border:none;border-radius:50px;cursor:pointer;box-shadow:0 5px 0 #bf360c;transition:transform .1s,box-shadow .1s;}
+.action-btn:active{transform:translateY(4px);box-shadow:0 1px 0 #bf360c;}
+
+/* COUNTDOWN */
+#countdown-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:center;justify-content:center;}
+#countdown-overlay.show{display:flex;}
+#countdown-num{font-size:11rem;color:white;text-shadow:4px 4px 0 rgba(0,0,0,.4);animation:popIn .4s ease-out;}
+@keyframes popIn{0%{transform:scale(.2);opacity:0;}70%{transform:scale(1.25);}100%{transform:scale(1);opacity:1;}}
+
+/* VS INTRO */
+#vs-intro{display:none;position:fixed;inset:0;z-index:60;align-items:center;justify-content:center;background:rgba(0,0,0,.7);}
+#vs-intro.show{display:flex;}
+#vs-cutin{font-size:5rem;font-weight:bold;color:white;text-shadow:4px 4px 0 rgba(0,0,0,.5);text-align:center;line-height:1.3;animation:cutinPop .5s ease-out;}
+@keyframes cutinPop{0%{transform:scale(0) rotate(-10deg);opacity:0;}60%{transform:scale(1.15) rotate(2deg);}100%{transform:scale(1) rotate(0deg);opacity:1;}}
+.grid-highlight{position:fixed;z-index:55;pointer-events:none;border-radius:20px;opacity:0;transition:opacity .4s;}
+.grid-highlight.show{opacity:.55;}
+
+/* RESULT */
+#result-screen{position:relative;z-index:1;text-align:center;}
+#result-title{font-size:2.8rem;color:white;text-shadow:3px 3px 0 rgba(0,0,0,.3);margin-bottom:12px;}
+#result-scores{display:flex;gap:20px;justify-content:center;margin-bottom:16px;flex-wrap:wrap;}
+.result-box{background:white;border-radius:16px;padding:12px 28px;box-shadow:0 4px 12px rgba(0,0,0,.2);font-size:1.2rem;}
+.result-box .big{font-size:2.8rem;font-weight:bold;color:#e64a19;display:block;}
+.result-box .big.p2c{color:#7e57c2;}
+#new-record{font-size:1.8rem;color:#ffca28;font-weight:bold;text-shadow:2px 2px 0 rgba(0,0,0,.4);margin-bottom:8px;display:none;}
+#result-mole{position:fixed;bottom:-280px;left:-20px;font-size:0;z-index:10;transition:bottom .75s cubic-bezier(.22,1,.36,1);transform:rotate(-18deg);pointer-events:none;}
+#result-mole::after{content:'🐹';font-size:180px;display:block;filter:drop-shadow(6px 6px 10px rgba(0,0,0,.35));}
+#result-mole.show{bottom:10px;}
+#flash-overlay{display:none;position:fixed;inset:0;z-index:200;pointer-events:none;}
+#flash-overlay.show{display:block;animation:flashAnim .6s ease-out forwards;}
+@keyframes flashAnim{0%{background:rgba(255,255,200,.95);}40%{background:rgba(255,220,0,.6);}100%{background:rgba(255,220,0,0);}}
+
+/* BANGS */
+.bang{position:fixed;pointer-events:none;z-index:100;animation:bangAnim .55s ease-out forwards;transform-origin:center;}
+@keyframes bangAnim{0%{opacity:1;transform:scale(.2) translateY(0);}40%{opacity:1;transform:scale(2.0) translateY(-15px);}100%{opacity:0;transform:scale(2.6) translateY(-60px);}}
+.bang-gold{position:fixed;pointer-events:none;z-index:100;animation:bangGoldAnim .8s ease-out forwards;}
+@keyframes bangGoldAnim{0%{opacity:1;transform:scale(.5) translateY(0) rotate(0deg);}50%{opacity:1;transform:scale(1.8) translateY(-30px) rotate(180deg);}100%{opacity:0;transform:scale(.5) translateY(-80px) rotate(360deg);}}
+.bang-bomb{position:fixed;pointer-events:none;z-index:100;font-size:6rem;animation:bombExp .6s ease-out forwards;}
+@keyframes bombExp{0%{opacity:1;transform:scale(.3);}50%{opacity:1;transform:scale(2.5);}100%{opacity:0;transform:scale(3);}}
+.bang-time{position:fixed;pointer-events:none;z-index:100;font-size:1.8rem;color:#29b6f6;font-weight:bold;text-shadow:2px 2px 0 rgba(0,0,0,.3);animation:timeUp .8s ease-out forwards;}
+@keyframes timeUp{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-80px) scale(1.5);}}
+
+/* FEVER POPUP TEXT */
+.fever-popup{position:fixed;z-index:202;pointer-events:none;top:22%;left:50%;transform:translateX(-50%);font-size:3.5rem;font-weight:bold;color:#ffca28;text-shadow:3px 3px 0 rgba(0,0,0,.4);white-space:nowrap;animation:feverPop .9s ease-out forwards;}
+@keyframes feverPop{0%{opacity:0;transform:translateX(-50%) scale(.3);}30%{opacity:1;transform:translateX(-50%) scale(1.3);}70%{opacity:1;transform:translateX(-50%) scale(1);}100%{opacity:0;transform:translateX(-50%) scale(.8) translateY(-40px);}}
+
+/* ========== RABBIT RUSH ========== */
+.rabbit-rush{
+  position:fixed;
+  right:-80px;
+  z-index:201;
+  pointer-events:auto;
+  cursor:pointer;
+  font-size:2.8rem;
+  animation: rabbitFly var(--fly-dur,2.5s) var(--fly-delay,0s) linear both;
+  will-change:transform;
+}
+.rabbit-rush:hover{ filter: brightness(1.3); }
+.rabbit-rush.hit-rabbit{
+  animation: rabbitHit 0.3s ease-out forwards !important;
+}
+@keyframes rabbitHit{
+  0%  { opacity:1; transform:translateX(var(--cur-x,0px)) scale(1); }
+  50% { opacity:1; transform:translateX(var(--cur-x,0px)) scale(1.8) rotate(30deg); }
+  100%{ opacity:0; transform:translateX(var(--cur-x,0px)) scale(0.2) rotate(90deg); }
+}
+@keyframes rabbitFly{
+  0%  { transform: translateX(0)           translateY(0)               rotate(0deg);   opacity:1; }
+  20% { transform: translateX(calc(-20vw)) translateY(var(--bob1,-18px)) rotate(-6deg); opacity:1; }
+  50% { transform: translateX(calc(-55vw)) translateY(var(--bob2,12px))  rotate(-3deg); opacity:1; }
+  80% { transform: translateX(calc(-90vw)) translateY(var(--bob3,-10px)) rotate(-6deg); opacity:1; }
+  100%{ transform: translateX(calc(-120vw)) translateY(0)               rotate(-10deg); opacity:0; }
+}
+.rabbit-score{
+  position:fixed;
+  z-index:201;
+  pointer-events:none;
+  font-size:1.2rem;
+  font-weight:bold;
+  color:white;
+  text-shadow:1px 1px 0 rgba(0,0,0,.5);
+  animation: rabbitFly var(--fly-dur,2.5s) var(--fly-delay,0s) linear both;
+  will-change:transform;
+}
+
+#bgm-btn{position:fixed;top:14px;right:14px;z-index:300;background:white;border:none;border-radius:50%;width:52px;height:52px;font-size:1.6rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);transition:transform .1s;}
+#bgm-btn:active{transform:scale(.9);}
+</style>
+</head>
+<body>
+
+<button id="bgm-btn" onclick="toggleBGM()">🎵</button>
+<div id="countdown-overlay"><div id="countdown-num">3</div></div>
+<div id="vs-intro"><div id="vs-cutin"></div></div>
+<div id="result-mole"></div>
+<div id="flash-overlay"></div>
+<div id="fever-overlay"></div>
+
+<!-- TITLE -->
+<div id="title-screen" class="screen">
+  <h1>🐹 もぐらたたき</h1>
+  <div class="subtitle">むずかしさをえらんでね！</div>
+  <div class="diff-btns">
+    <button class="diff-btn easy"   onclick="initGame('easy')">😊 かんたん</button>
+    <button class="diff-btn normal" onclick="initGame('normal')">🎮 ふつう</button>
+    <button class="diff-btn hard"   onclick="initGame('hard')">🔥 むずかしい</button>
+  </div>
+  <div class="diff-btns">
+    <button class="diff-btn vs" onclick="initGame('vs')">👥 二人たいせん</button>
+  </div>
+  <div id="hi-score-display">ハイスコア読み込み中…</div>
+</div>
+
+<!-- GAME -->
+<div id="game-screen" class="screen hidden">
+  <div id="scoreboard">
+    <div class="score-box" id="score-box-p1">🌟 <span id="score">0</span> てん</div>
+    <div class="score-box p2box" id="score-box-p2" style="display:none">👥 <span id="score2">0</span> てん</div>
+    <div class="score-box">⏰ <span id="timer">50</span> びょう</div>
+  </div>
+  <div id="fever-label">🔥 フィーバーまであと…</div>
+  <div id="fever-wrap"><div id="fever-bar"></div></div>
+  <div id="legend">
+    <span>🐹+1</span><span>🐭はやい+1</span><span>🐸カエル+3</span>
+    <span>⏰+3びょう</span><span>💣さけろ!</span><span>👻+2</span>
+  </div>
+  <div id="grid-wrap"></div>
+  <div id="message"></div>
+  <button class="action-btn" onclick="quitGame()">🏠 もどる</button>
+</div>
+
+<!-- RESULT -->
+<div id="result-screen" class="screen hidden">
+  <div id="result-title">ゲームおわり！</div>
+  <div id="new-record">🎊 ニューレコード！！</div>
+  <div id="result-scores"></div>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <button class="action-btn" onclick="goTitle()">🏠 タイトル</button>
+    <button class="action-btn" style="background:#43a047;box-shadow:0 5px 0 #1b5e20" onclick="replayGame()">🔄 もう一かい</button>
+  </div>
+</div>
+
+<audio id="bgm-title" src="sounds/bgm_001.mp3" loop></audio>
+<audio id="bgm-game"  src="sounds/bgm_002.mp3" loop></audio>
+<audio id="se-result" src="sounds/se_002.mp3"></audio>
+
+<script>
+// ==============================
+// CONFIG
+// ==============================
+const CONFIGS = {
+  easy:   {time:60,normalUp:[1400,2000],quickUp:600, spawnInt:[600,900], simul:2, frogC:.04,quickC:.10,bombC:.02,ghostC:.05,clockC:.04},
+  normal: {time:50,normalUp:[1100,1600],quickUp:380, spawnInt:[400,700], simul:4, frogC:.05,quickC:.20,bombC:.04,ghostC:.08,clockC:.03},
+  hard:   {time:40,normalUp:[700,1100], quickUp:220, spawnInt:[200,450], simul:5, frogC:.05,quickC:.30,bombC:.06,ghostC:.10,clockC:.03},
+  vs:     {time:60,normalUp:[1100,1600],quickUp:380, spawnInt:[400,700], simul:4, frogC:.05,quickC:.20,bombC:.04,ghostC:.08,clockC:.03},
+};
+const HOLE_COUNT = 12;
+const FEVER_THRESHOLD = 20; // 溜まりにくく（15→20）
+const FEVER_DURATION  = 8000;
+const RABBIT_COUNT    = 22; // 大群の数
+
+// ==============================
+// STATE
+// ==============================
+let cfg, mode;
+let score=0, score2=0, timeLeft=50;
+let gameActive=false, moleTimers=[], countdownTimer=null;
+let lastHole=-1, lastHole2=-1;
+let bgmEnabled=true;
+let combo=0, feverActive=false, feverTimer=null;
+
+// ==============================
+// DAILY HI-SCORE
+// ==============================
+function todayKey(){const d=new Date();return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;}
+function loadDailyHi(){
+  try{
+    const raw=JSON.parse(localStorage.getItem('mogura-daily')||'{}');
+    if(raw.date!==todayKey())return{easy:0,normal:0,hard:0};
+    return raw.scores||{easy:0,normal:0,hard:0};
+  }catch(e){return{easy:0,normal:0,hard:0};}
+}
+function saveDailyHi(m,s){
+  if(m==='vs')return false;
+  const hi=loadDailyHi();
+  if(s>hi[m]){hi[m]=s;try{localStorage.setItem('mogura-daily',JSON.stringify({date:todayKey(),scores:hi}));}catch(e){}return true;}
+  return false;
+}
+
+// ==============================
+// SCREENS
+// ==============================
+function showScreen(name){
+  ['title-screen','game-screen','result-screen'].forEach(id=>{
+    document.getElementById(id).classList.toggle('hidden',id!==name+'-screen');
+  });
+}
+
+// ==============================
+// GRID BUILD
+// ==============================
+let p1Holes=[], p1Moles=[], p2Holes=[], p2Moles=[];
+
+function buildGrid(count,cols,rows,clickHandler){
+  const panel=document.createElement('div'); panel.className='grid-panel';
+  const grid=document.createElement('div');  grid.className='grid';
+  grid.style.gridTemplateColumns=`repeat(${cols},90px)`;
+  grid.style.gridTemplateRows   =`repeat(${rows},90px)`;
+  panel.appendChild(grid);
+  const holes=[],moles=[];
+  for(let i=0;i<count;i++){
+    const hole=document.createElement('div'); hole.className='hole';
+    const mole=document.createElement('div'); mole.className='mole';
+    hole.appendChild(mole); grid.appendChild(hole);
+    holes.push(hole); moles.push(mole);
+    hole.addEventListener('pointerdown',e=>{resumeCtx();clickHandler(i,e);});
+  }
+  return{panel,grid,holes,moles};
+}
+
+function setupGrids(){
+  const wrap=document.getElementById('grid-wrap'); wrap.innerHTML='';
+  p1Holes=[];p1Moles=[];p2Holes=[];p2Moles=[];
+
+  if(mode==='vs'){
+    const p1Area=document.createElement('div'); p1Area.className='player-area'; p1Area.id='p1-area';
+    const p1Banner=document.createElement('div'); p1Banner.className='player-banner p1-banner'; p1Banner.textContent='🟠 プレイヤー1';
+    const p1g=buildGrid(12,3,4,handleP1Click);
+    p1g.panel.classList.add('p1-panel');
+    p1Area.appendChild(p1Banner); p1Area.appendChild(p1g.panel); wrap.appendChild(p1Area);
+    p1Holes=p1g.holes; p1Moles=p1g.moles;
+
+    const spacer=document.createElement('div'); spacer.style.width='20px'; wrap.appendChild(spacer);
+
+    const p2Area=document.createElement('div'); p2Area.className='player-area'; p2Area.id='p2-area';
+    const p2Banner=document.createElement('div'); p2Banner.className='player-banner p2-banner'; p2Banner.textContent='🟣 プレイヤー2';
+    const p2g=buildGrid(12,3,4,handleP2Click);
+    p2g.panel.classList.add('p2-panel');
+    p2Area.appendChild(p2Banner); p2Area.appendChild(p2g.panel); wrap.appendChild(p2Area);
+    p2Holes=p2g.holes; p2Moles=p2g.moles;
+
+    document.getElementById('score-box-p2').style.display='block';
+  }else{
+    const p1g=buildGrid(12,4,3,handleP1Click);
+    p1g.panel.classList.add('no-border');
+    wrap.appendChild(p1g.panel);
+    p1Holes=p1g.holes; p1Moles=p1g.moles;
+    document.getElementById('score-box-p2').style.display='none';
+  }
+}
+
+function handleP1Click(i,e){if(!gameActive)return;hitMole(p1Moles[i],e,'p1');}
+function handleP2Click(i,e){if(!gameActive)return;hitMole(p2Moles[i],e,'p2');}
+
+// ==============================
+// AUDIO
+// ==============================
+const bgmTitle=document.getElementById('bgm-title');
+const bgmGame =document.getElementById('bgm-game');
+const seResult=document.getElementById('se-result');
+const bgmBtn  =document.getElementById('bgm-btn');
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+function resumeCtx(){if(audioCtx.state==='suspended')audioCtx.resume();}
+
+bgmTitle.play().catch(()=>{});
+document.addEventListener('pointerdown',function f(){resumeCtx();if(bgmEnabled)bgmTitle.play().catch(()=>{});document.removeEventListener('pointerdown',f);},{once:true});
+
+function toggleBGM(){
+  resumeCtx(); bgmEnabled=!bgmEnabled;
+  bgmBtn.textContent=bgmEnabled?'🎵':'🔇';
+  if(!bgmEnabled){bgmTitle.pause();bgmGame.pause();}
+  else{if(gameActive)bgmGame.play().catch(()=>{});else bgmTitle.play().catch(()=>{});}
+}
+
+function sfx(type){
+  try{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    const t=audioCtx.currentTime;
+    ({
+      hit: ()=>{o.frequency.setValueAtTime(700,t);o.frequency.exponentialRampToValueAtTime(180,t+.18);g.gain.setValueAtTime(.45,t);g.gain.exponentialRampToValueAtTime(.001,t+.22);o.start();o.stop(t+.22);},
+      frog:()=>{o.frequency.setValueAtTime(1200,t);o.frequency.exponentialRampToValueAtTime(600,t+.3);g.gain.setValueAtTime(.5,t);g.gain.exponentialRampToValueAtTime(.001,t+.35);o.start();o.stop(t+.35);},
+      bomb:()=>{o.type='sawtooth';o.frequency.setValueAtTime(120,t);g.gain.setValueAtTime(.6,t);g.gain.exponentialRampToValueAtTime(.001,t+.4);o.start();o.stop(t+.4);},
+      clock:()=>{o.frequency.setValueAtTime(800,t);o.frequency.setValueAtTime(1000,t+.1);g.gain.setValueAtTime(.4,t);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.start();o.stop(t+.3);},
+      fever:()=>{o.frequency.setValueAtTime(400,t);o.frequency.exponentialRampToValueAtTime(1600,t+.5);g.gain.setValueAtTime(.5,t);g.gain.exponentialRampToValueAtTime(.001,t+.6);o.start();o.stop(t+.6);},
+      count:()=>{o.frequency.value=440;g.gain.setValueAtTime(.3,t);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.start();o.stop(t+.3);},
+      start:()=>{o.frequency.value=880;g.gain.setValueAtTime(.3,t);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.start();o.stop(t+.3);},
+    })[type]?.();
+  }catch(e){}
+}
+
+// ==============================
+// RABBIT RUSH (フィーバー演出)
+// ==============================
+function launchRabbitRush(){
+  const rows   = 5;
+  const perRow = Math.ceil(RABBIT_COUNT / rows);
+  let idx = 0;
+
+  for(let row=0; row<rows; row++){
+    const baseTop = 10 + row * (80/rows); // vh
+    for(let col=0; col<perRow; col++){
+      if(idx >= RABBIT_COUNT) break;
+      idx++;
+
+      const delay = col * 0.12 + row * 0.06; // stagger（ゆっくりめ）
+      const dur   = 2.0 + Math.random()*1.0;  // 2〜3秒
+      const topVh = baseTop + (Math.random()-0.5)*6;
+      const bob1  = (Math.random()-0.5)*30 + 'px';
+      const bob2  = (Math.random()-0.5)*25 + 'px';
+      const bob3  = (Math.random()-0.5)*20 + 'px';
+      const size  = 2.4 + Math.random()*0.8;
+
+      // ウサギ本体
+      const el = document.createElement('div');
+      el.className = 'rabbit-rush';
+      el.textContent = '🐇';
+      el.style.setProperty('--fly-dur',   dur+'s');
+      el.style.setProperty('--fly-delay', delay+'s');
+      el.style.setProperty('--bob1', bob1);
+      el.style.setProperty('--bob2', bob2);
+      el.style.setProperty('--bob3', bob3);
+      el.style.top      = topVh + 'vh';
+      el.style.fontSize = size + 'rem';
+      document.body.appendChild(el);
+
+      // +1 ラベル
+      const sc = document.createElement('div');
+      sc.className = 'rabbit-score';
+      sc.textContent = '+1';
+      sc.style.setProperty('--fly-dur',   dur+'s');
+      sc.style.setProperty('--fly-delay', delay+'s');
+      sc.style.setProperty('--bob1', bob1);
+      sc.style.setProperty('--bob2', bob2);
+      sc.style.setProperty('--bob3', bob3);
+      sc.style.top = (topVh - 3) + 'vh';
+      document.body.appendChild(sc);
+
+      // ✅ クリック/タップで叩ける！
+      el.addEventListener('pointerdown', function(e){
+        if(el.classList.contains('hit-rabbit')) return;
+        e.stopPropagation();
+        resumeCtx();
+
+        // 現在のtransform位置を固定してヒットアニメ
+        const rect = el.getBoundingClientRect();
+        const cx = rect.left + rect.width/2;
+        const cy = rect.top  + rect.height/2;
+
+        el.classList.add('hit-rabbit');
+        sc.style.display = 'none';
+        addScore('p1', 1);
+        sfx('hit');
+
+        // 💥エフェクト
+        const bang = document.createElement('div');
+        bang.className = 'bang';
+        bang.textContent = '⭐';
+        bang.style.left = (cx-44)+'px';
+        bang.style.top  = (cy-44)+'px';
+        bang.style.fontSize = '4rem';
+        document.body.appendChild(bang);
+        setTimeout(()=>bang.remove(), 560);
+
+        setTimeout(()=>{ el.remove(); sc.remove(); }, 350);
+      });
+
+      const totalMs = (delay + dur + 0.2) * 1000;
+      setTimeout(()=>{ el.remove(); sc.remove(); }, totalMs);
+    }
+  }
+}
+
+// ==============================
+// MOLE SPAWN
+// ==============================
+function moleType(){
+  const r=Math.random();
+  if(r<cfg.frogC)  return 'frog';
+  if(r<cfg.frogC+cfg.clockC) return 'clock';
+  if(r<cfg.frogC+cfg.clockC+cfg.bombC)  return 'bomb';
+  if(r<cfg.frogC+cfg.clockC+cfg.bombC+cfg.ghostC) return 'ghost';
+  if(r<cfg.frogC+cfg.clockC+cfg.bombC+cfg.ghostC+cfg.quickC) return 'quick';
+  return 'normal';
+}
+function getRandIdx(moles,last){
+  let idx,tries=0;
+  do{idx=Math.floor(Math.random()*moles.length);tries++;}while((idx===last||moles[idx].classList.contains('up'))&&tries<30);
+  return idx;
+}
+function spawnMole(player){
+  if(!gameActive)return;
+  const moles=player==='p1'?p1Moles:p2Moles;
+  const isP2=player==='p2';
+  const idx=getRandIdx(moles,isP2?lastHole2:lastHole);
+  if(isP2)lastHole2=idx;else lastHole=idx;
+  const mole=moles[idx];
+  const type=moleType();
+  mole.dataset.type=type; mole.dataset.player=player;
+  mole.className=`mole type-${type}`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>mole.classList.add('up')));
+  const upMs=type==='quick'?cfg.quickUp:type==='frog'?1200+Math.random()*400:type==='clock'?900+Math.random()*300:type==='bomb'?1600+Math.random()*500:type==='ghost'?800+Math.random()*300:cfg.normalUp[0]+Math.random()*(cfg.normalUp[1]-cfg.normalUp[0]);
+  const t=setTimeout(()=>{
+    if(mole.classList.contains('up')&&!mole.classList.contains('hit'))mole.classList.remove('up');
+    if(gameActive){const d=cfg.spawnInt[0]+Math.random()*(cfg.spawnInt[1]-cfg.spawnInt[0]);setTimeout(()=>spawnMole(player),d);}
+  },upMs);
+  moleTimers.push(t);
+}
+function wave(player,n){for(let i=0;i<n;i++)setTimeout(()=>spawnMole(player),i*150);}
+
+// ==============================
+// HIT
+// ==============================
+function hitMole(mole,e,player){
+  if(!mole.classList.contains('up')||mole.classList.contains('hit'))return;
+  const type=mole.dataset.type;
+  mole.classList.remove('up'); mole.classList.add('hit');
+  setTimeout(()=>{mole.className='mole';mole.dataset.type='';},300);
+  if(type==='bomb'){
+    addScore(player,-3);combo=0;updateFeverBar();
+    sfx('bomb');bangBomb(e.clientX,e.clientY);return;
+  }
+  let pts=type==='frog'?3:type==='ghost'?2:1;
+  if(type==='clock'){addTime(3,e.clientX,e.clientY);sfx('clock');}
+  else{addScore(player,pts);sfx(type==='frog'?'frog':'hit');}
+  if(type!=='clock'){combo++;updateFeverBar();if(combo>=FEVER_THRESHOLD&&!feverActive)triggerFever();}
+  bangHit(e.clientX,e.clientY,type,pts);
+}
+
+function addScore(player,pts){
+  if(player==='p2'){score2=Math.max(0,score2+pts);document.getElementById('score2').textContent=score2;}
+  else{score=Math.max(0,score+pts);document.getElementById('score').textContent=score;}
+}
+function addTime(s,x,y){
+  timeLeft+=s;document.getElementById('timer').textContent=timeLeft;
+  const el=document.createElement('div');el.className='bang-time';
+  el.textContent=`+${s}びょう！`;el.style.left=(x-60)+'px';el.style.top=(y-40)+'px';
+  document.body.appendChild(el);setTimeout(()=>el.remove(),800);
+}
+
+// ==============================
+// FEVER
+// ==============================
+function updateFeverBar(){
+  document.getElementById('fever-bar').style.width=Math.min(100,(combo/FEVER_THRESHOLD)*100)+'%';
+}
+function triggerFever(){
+  feverActive=true; sfx('fever');
+
+  // テキストポップ
+  const p=document.createElement('div');p.className='fever-popup';p.textContent='🔥 フィーバー！！ 🔥';
+  document.body.appendChild(p);setTimeout(()=>p.remove(),900);
+
+  // 虹ボーダー
+  document.getElementById('fever-overlay').style.display='block';
+
+  // 🐇大群！
+  setTimeout(()=>launchRabbitRush(), 300);
+
+  clearTimeout(feverTimer);
+  feverTimer=setTimeout(()=>{
+    feverActive=false;combo=0;updateFeverBar();
+    document.getElementById('fever-overlay').style.display='none';
+  },FEVER_DURATION);
+}
+
+// ==============================
+// BANGS
+// ==============================
+function makeBang(cls,text,x,y,fs,delay){
+  const el=document.createElement('div');el.className=cls;el.textContent=text;
+  if(fs)el.style.fontSize=fs;
+  el.style.left=(x-44)+'px';el.style.top=(y-44)+'px';
+  if(delay)el.style.animationDelay=delay;
+  document.body.appendChild(el);setTimeout(()=>el.remove(),900);
+}
+function bangHit(x,y,type,pts){
+  if(type==='frog'){
+    ['🐸','💚','⭐','✨','🌟'].forEach((em,i)=>makeBang('bang-gold',em,x+(i-2)*18,y,null,(i*.05)+'s'));
+    makeBang('bang','+3🐸',x,y-20,'2.5rem');
+  }else if(type==='ghost'){
+    makeBang('bang','👻+2',x,y,'2.8rem');
+  }else{
+    const set=feverActive?['🔥','⭐','✨','🌟','💥','🎆']:['💥','⭐','✨','🌟','💫'];
+    makeBang('bang',set[Math.floor(Math.random()*set.length)],x,y,feverActive?'7rem':'5.5rem');
+  }
+}
+function bangBomb(x,y){
+  makeBang('bang-bomb','💥',x,y);
+  document.body.style.transform='translateX(6px)';
+  setTimeout(()=>document.body.style.transform='translateX(-6px)',60);
+  setTimeout(()=>document.body.style.transform='',120);
+}
+
+// ==============================
+// VS INTRO
+// ==============================
+function runVSIntro(onDone){
+  const intro=document.getElementById('vs-intro');
+  const cutin=document.getElementById('vs-cutin');
+  const p1Panel=document.querySelector('#p1-area .grid-panel');
+  const p2Panel=document.querySelector('#p2-area .grid-panel');
+
+  function makeHL(panel,color){
+    const rect=panel.getBoundingClientRect();
+    const hl=document.createElement('div'); hl.className='grid-highlight';
+    hl.style.cssText=`left:${rect.left-8}px;top:${rect.top-8}px;width:${rect.width+16}px;height:${rect.height+16}px;background:${color};`;
+    document.body.appendChild(hl); return hl;
+  }
+  function flashText(text,color,cb){
+    cutin.textContent=text; cutin.style.color=color;
+    cutin.style.animation='none'; void cutin.offsetWidth;
+    cutin.style.animation='cutinPop .5s ease-out';
+    intro.classList.add('show');
+    setTimeout(()=>{intro.classList.remove('show');setTimeout(cb,200);},1200);
+  }
+  flashText('🟠 プレイヤー1（P1）','#ff7043',()=>{
+    const hl1=makeHL(p1Panel,'#ff7043');
+    requestAnimationFrame(()=>hl1.classList.add('show'));
+    setTimeout(()=>{hl1.classList.remove('show');setTimeout(()=>{hl1.remove();
+      flashText('🟣 プレイヤー2（P2）','#ce93d8',()=>{
+        const hl2=makeHL(p2Panel,'#7e57c2');
+        requestAnimationFrame(()=>hl2.classList.add('show'));
+        setTimeout(()=>{hl2.classList.remove('show');setTimeout(()=>{hl2.remove();onDone();},400);},1000);
+      });
+    },400);},1000);
+  });
+}
+
+// ==============================
+// COUNTDOWN
+// ==============================
+function doCountdown(onDone){
+  const overlay=document.getElementById('countdown-overlay');
+  const numEl=document.getElementById('countdown-num');
+  overlay.classList.add('show'); let count=3;
+  function flash(text,isStart){numEl.textContent=text;numEl.style.animation='none';void numEl.offsetWidth;numEl.style.animation='popIn .4s ease-out';sfx(isStart?'start':'count');}
+  flash(count);
+  const iv=setInterval(()=>{count--;if(count>0)flash(count);else{flash('スタート！',true);clearInterval(iv);setTimeout(()=>{overlay.classList.remove('show');onDone();},700);}},1000);
+}
+
+// ==============================
+// GAME FLOW
+// ==============================
+function initGame(diff){
+  resumeCtx(); mode=diff; cfg=CONFIGS[diff];
+  score=0;score2=0;timeLeft=cfg.time;combo=0;feverActive=false;
+  document.getElementById('score').textContent=0;
+  document.getElementById('score2').textContent=0;
+  document.getElementById('timer').textContent=cfg.time;
+  document.getElementById('fever-bar').style.width='0%';
+  document.getElementById('fever-overlay').style.display='none';
+  document.getElementById('result-mole').classList.remove('show');
+  bgmTitle.pause();bgmTitle.currentTime=0;
+  setupGrids(); showScreen('game');
+  const fw=document.getElementById('fever-wrap');
+  const fl=document.getElementById('fever-label');
+  if(diff!=='easy'){fw.style.display='block';fl.style.display='block';}
+  else{fw.style.display='none';fl.style.display='none';}
+  if(mode==='vs'){requestAnimationFrame(()=>requestAnimationFrame(()=>runVSIntro(()=>doCountdown(startGame))));}
+  else{doCountdown(startGame);}
+}
+
+function startGame(){
+  gameActive=true;
+  document.getElementById('message').textContent='たたけ！たたけ！';
+  if(bgmEnabled)bgmGame.play().catch(()=>{});
+  wave('p1',cfg.simul);
+  if(mode==='vs')wave('p2',cfg.simul);
+  countdownTimer=setInterval(()=>{timeLeft--;document.getElementById('timer').textContent=timeLeft;if(timeLeft<=0)endGame();},1000);
+}
+
+function endGame(){
+  gameActive=false;clearInterval(countdownTimer);clearTimeout(feverTimer);
+  moleTimers.forEach(clearTimeout);moleTimers=[];
+  p1Moles.forEach(m=>m.classList.remove('up'));p2Moles.forEach(m=>m.classList.remove('up'));
+  bgmGame.pause();bgmGame.currentTime=0;
+  document.getElementById('fever-overlay').style.display='none';
+  const isNew=saveDailyHi(mode,score);buildResult(isNew);showScreen('result');
+  setTimeout(()=>{
+    const fl=document.getElementById('flash-overlay');fl.classList.remove('show');void fl.offsetWidth;fl.classList.add('show');
+    if(bgmEnabled)seResult.play().catch(()=>{});
+    setTimeout(()=>document.getElementById('result-mole').classList.add('show'),200);
+    setTimeout(()=>{if(bgmEnabled)bgmTitle.play().catch(()=>{});},1500);
+  },200);
+}
+
+function buildResult(isNew){
+  document.getElementById('new-record').style.display=isNew?'block':'none';
+  const wrap=document.getElementById('result-scores');wrap.innerHTML='';
+  const hi=loadDailyHi();
+  if(mode==='vs'){
+    const w=score>score2?'🟠 P1のかち！':score2>score?'🟣 P2のかち！':'🤝 ひきわけ！';
+    document.getElementById('result-title').textContent=w;
+    const b1=document.createElement('div');b1.className='result-box';b1.innerHTML=`🟠 P1<span class="big">${score}</span>てん`;
+    const b2=document.createElement('div');b2.className='result-box';b2.innerHTML=`🟣 P2<span class="big p2c">${score2}</span>てん`;
+    wrap.appendChild(b1);wrap.appendChild(b2);
+  }else{
+    document.getElementById('result-title').textContent=getMsg(score);
+    const b=document.createElement('div');b.className='result-box';b.innerHTML=`🌟 スコア<span class="big">${score}</span>てん`;
+    const b2=document.createElement('div');b2.className='result-box';b2.innerHTML=`📅 本日ベスト<span class="big">${hi[mode]}</span>てん`;
+    wrap.appendChild(b);wrap.appendChild(b2);
+  }
+}
+
+function getMsg(s){
+  if(s>=60)return'🏆 まさに伝説！！';if(s>=45)return'🎖 すごい！天才！';
+  if(s>=30)return'🎉 よくできました！';if(s>=15)return'😊 じょうずじょうず！';return'🐹 もっとがんばろう！';
+}
+function quitGame(){
+  gameActive=false;clearInterval(countdownTimer);clearTimeout(feverTimer);
+  moleTimers.forEach(clearTimeout);moleTimers=[];
+  bgmGame.pause();bgmGame.currentTime=0;document.getElementById('fever-overlay').style.display='none';goTitle();
+}
+function goTitle(){document.getElementById('result-mole').classList.remove('show');updateHiDisplay();showScreen('title');if(bgmEnabled)bgmTitle.play().catch(()=>{});}
+function replayGame(){document.getElementById('result-mole').classList.remove('show');seResult.pause();seResult.currentTime=0;initGame(mode);}
+function updateHiDisplay(){
+  const hi=loadDailyHi();
+  document.getElementById('hi-score-display').innerHTML=`📅 本日のハイスコア<br>😊かんたん:<b>${hi.easy}</b>　🎮ふつう:<b>${hi.normal}</b>　🔥むずかしい:<b>${hi.hard}</b>`;
+}
+updateHiDisplay();
+</script>
+</body>
+</html>

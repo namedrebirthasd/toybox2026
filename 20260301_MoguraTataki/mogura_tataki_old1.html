@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>もぐらたたき</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Kosugi+Maru&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Kosugi Maru', sans-serif;
+    background: #87CEEB;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  /* Sky & Ground */
+  body::before {
+    content: '';
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 35%;
+    background: #5D8A3C;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '☁ ☁ ☁';
+    position: fixed;
+    top: 30px; left: 10%;
+    font-size: 2rem;
+    color: white;
+    opacity: 0.8;
+    z-index: 0;
+    letter-spacing: 40px;
+  }
+
+  #game-wrap {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+  }
+
+  #scoreboard {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .score-box {
+    background: white;
+    border-radius: 20px;
+    padding: 10px 28px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    font-size: 1.5rem;
+  }
+
+  .score-box span { font-size: 2rem; font-weight: bold; color: #e64a19; }
+
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(3, 120px);
+    grid-template-rows: repeat(3, 120px);
+    gap: 16px;
+    margin: 0 auto;
+  }
+
+  .hole {
+    width: 120px;
+    height: 120px;
+    background: #3e2723;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: inset 0 6px 16px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3);
+    transition: transform 0.05s;
+  }
+
+  .hole:active { transform: scale(0.95); }
+
+  .mole {
+    position: absolute;
+    bottom: -100%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 72px;
+    line-height: 1;
+    transition: bottom 0.15s ease-out;
+    cursor: pointer;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  }
+
+  .mole.up { bottom: 5%; }
+
+  .mole.hit {
+    animation: spin 0.3s ease-out forwards;
+  }
+
+  @keyframes spin {
+    0% { transform: translateX(-50%) scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: translateX(-50%) scale(0.2) rotate(360deg); opacity: 0; }
+  }
+
+  #start-btn {
+    margin-top: 24px;
+    padding: 18px 60px;
+    font-size: 2rem;
+    font-family: 'Kosugi Maru', sans-serif;
+    background: #ff7043;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #bf360c;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+
+  #start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #bf360c; }
+  #start-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #bf360c; }
+
+  #message {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: white;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+    min-height: 60px;
+    margin-top: 16px;
+  }
+
+  /* Hit effect */
+  .bang {
+    position: fixed;
+    pointer-events: none;
+    font-size: 2.5rem;
+    animation: bangAnim 0.5s ease-out forwards;
+    z-index: 100;
+  }
+
+  @keyframes bangAnim {
+    0% { opacity: 1; transform: scale(0.5) translateY(0); }
+    100% { opacity: 0; transform: scale(1.5) translateY(-40px); }
+  }
+</style>
+</head>
+<body>
+<div id="game-wrap">
+  <div id="scoreboard">
+    <div class="score-box">🌟 <span id="score">0</span> てん</div>
+    <div class="score-box">⏰ <span id="timer">30</span> びょう</div>
+  </div>
+
+  <div id="grid">
+    <div class="hole" id="h0"><div class="mole" id="m0">🐹</div></div>
+    <div class="hole" id="h1"><div class="mole" id="m1">🐹</div></div>
+    <div class="hole" id="h2"><div class="mole" id="m2">🐹</div></div>
+    <div class="hole" id="h3"><div class="mole" id="m3">🐹</div></div>
+    <div class="hole" id="h4"><div class="mole" id="m4">🐹</div></div>
+    <div class="hole" id="h5"><div class="mole" id="m5">🐹</div></div>
+    <div class="hole" id="h6"><div class="mole" id="m6">🐹</div></div>
+    <div class="hole" id="h7"><div class="mole" id="m7">🐹</div></div>
+    <div class="hole" id="h8"><div class="mole" id="m8">🐹</div></div>
+  </div>
+
+  <div id="message">したのボタンをおしてね！</div>
+  <button id="start-btn" onclick="startGame()">🎮 スタート！</button>
+</div>
+
+<script>
+  let score = 0;
+  let timeLeft = 30;
+  let gameActive = false;
+  let moleTimers = [];
+  let countdownTimer;
+  let lastHole = -1;
+
+  const moles = Array.from({length: 9}, (_, i) => document.getElementById('m' + i));
+  const holes = Array.from({length: 9}, (_, i) => document.getElementById('h' + i));
+
+  holes.forEach((hole, i) => {
+    hole.addEventListener('click', (e) => {
+      if (!gameActive) return;
+      if (moles[i].classList.contains('up') && !moles[i].classList.contains('hit')) {
+        whack(i, e.clientX, e.clientY);
+      }
+    });
+  });
+
+  function whack(i, x, y) {
+    score++;
+    document.getElementById('score').textContent = score;
+    moles[i].classList.remove('up');
+    moles[i].classList.add('hit');
+    showBang(x, y);
+    setTimeout(() => {
+      moles[i].classList.remove('hit');
+    }, 300);
+  }
+
+  function showBang(x, y) {
+    const el = document.createElement('div');
+    el.className = 'bang';
+    el.textContent = '💥';
+    el.style.left = (x - 20) + 'px';
+    el.style.top = (y - 20) + 'px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 500);
+  }
+
+  function showMole() {
+    if (!gameActive) return;
+    let idx;
+    do { idx = Math.floor(Math.random() * 9); } while (idx === lastHole);
+    lastHole = idx;
+
+    const mole = moles[idx];
+    if (mole.classList.contains('hit') || mole.classList.contains('up')) {
+      setTimeout(showMole, 200);
+      return;
+    }
+
+    mole.classList.add('up');
+    const upTime = 1200 + Math.random() * 600;
+    const t = setTimeout(() => {
+      mole.classList.remove('up');
+      if (gameActive) {
+        const nextDelay = 400 + Math.random() * 400;
+        setTimeout(showMole, nextDelay);
+      }
+    }, upTime);
+    moleTimers.push(t);
+  }
+
+  function startGame() {
+    // Reset
+    score = 0;
+    timeLeft = 30;
+    gameActive = true;
+    document.getElementById('score').textContent = 0;
+    document.getElementById('timer').textContent = 30;
+    document.getElementById('message').textContent = 'たたけ！たたけ！';
+    document.getElementById('start-btn').style.display = 'none';
+
+    moles.forEach(m => {
+      m.classList.remove('up', 'hit');
+    });
+
+    // Start moles (show 2 at a time)
+    showMole();
+    setTimeout(showMole, 300);
+
+    // Countdown
+    countdownTimer = setInterval(() => {
+      timeLeft--;
+      document.getElementById('timer').textContent = timeLeft;
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+  }
+
+  function endGame() {
+    gameActive = false;
+    clearInterval(countdownTimer);
+    moleTimers.forEach(clearTimeout);
+    moleTimers = [];
+    moles.forEach(m => m.classList.remove('up'));
+
+    let msg = '';
+    if (score >= 30) msg = '🏆 すごい！天才！';
+    else if (score >= 20) msg = '🎉 よくできました！';
+    else if (score >= 10) msg = '😊 じょうずじょうず！';
+    else msg = '🐹 もっとがんばろう！';
+
+    document.getElementById('message').textContent = msg + '　' + score + 'てん！';
+    document.getElementById('start-btn').style.display = 'inline-block';
+    document.getElementById('start-btn').textContent = '🔄 もう一かい';
+  }
+</script>
+</body>
+</html>

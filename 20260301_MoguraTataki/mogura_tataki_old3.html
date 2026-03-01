@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>もぐらたたき</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Kosugi+Maru&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Kosugi Maru', sans-serif;
+    background: #87CEEB;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 32%;
+    background: #5D8A3C;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '☁ ☁ ☁';
+    position: fixed;
+    top: 24px; left: 8%;
+    font-size: 1.8rem;
+    color: white;
+    opacity: 0.8;
+    z-index: 0;
+    letter-spacing: 36px;
+  }
+
+  #game-wrap {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+  }
+
+  #scoreboard {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .score-box {
+    background: white;
+    border-radius: 16px;
+    padding: 8px 22px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    font-size: 1.3rem;
+  }
+  .score-box span { font-size: 1.8rem; font-weight: bold; color: #e64a19; }
+
+  /* 12穴グリッド (4x3) */
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(4, 100px);
+    grid-template-rows: repeat(3, 100px);
+    gap: 12px;
+    margin: 0 auto;
+  }
+
+  .hole {
+    width: 100px;
+    height: 100px;
+    background: #3e2723;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: inset 0 6px 16px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3);
+    transition: transform 0.05s;
+  }
+  .hole:active { transform: scale(0.93); }
+
+  .mole {
+    position: absolute;
+    bottom: -110%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 60px;
+    line-height: 1;
+    transition: bottom 0.13s ease-out;
+    cursor: pointer;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  }
+  .mole.up { bottom: 4%; }
+
+  /* 通常もぐら */
+  .mole.type-normal::after { content: '🐹'; }
+  /* 即逃げもぐら（赤っぽく） */
+  .mole.type-quick::after { content: '🐭'; }
+  /* 黄金もぐら */
+  .mole.type-gold::after { content: '🌟'; }
+
+  .mole {
+    font-size: 0; /* テキスト非表示、::afterで絵文字 */
+  }
+  .mole::after {
+    font-size: 60px;
+    display: block;
+    animation: none;
+  }
+
+  .mole.type-gold::after {
+    animation: goldSpin 1s linear infinite;
+  }
+  @keyframes goldSpin {
+    0%   { filter: hue-rotate(0deg) drop-shadow(0 0 6px gold); }
+    50%  { filter: hue-rotate(30deg) drop-shadow(0 0 14px gold); }
+    100% { filter: hue-rotate(0deg) drop-shadow(0 0 6px gold); }
+  }
+
+  .mole.hit {
+    animation: spin 0.28s ease-out forwards !important;
+  }
+  @keyframes spin {
+    0%   { transform: translateX(-50%) scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: translateX(-50%) scale(0.15) rotate(360deg); opacity: 0; }
+  }
+
+  #start-btn {
+    margin-top: 16px;
+    padding: 16px 52px;
+    font-size: 1.8rem;
+    font-family: 'Kosugi Maru', sans-serif;
+    background: #ff7043;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #bf360c;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  #start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #bf360c; }
+  #start-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #bf360c; }
+
+  #message {
+    font-size: 2rem;
+    font-weight: bold;
+    color: white;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+    min-height: 52px;
+    margin-top: 12px;
+  }
+
+  /* カウントダウン */
+  #countdown-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 50;
+    align-items: center;
+    justify-content: center;
+  }
+  #countdown-overlay.show { display: flex; }
+  #countdown-num {
+    font-family: 'Kosugi Maru', sans-serif;
+    font-size: 11rem;
+    color: white;
+    text-shadow: 4px 4px 0 rgba(0,0,0,0.4);
+    animation: popIn 0.4s ease-out;
+  }
+  @keyframes popIn {
+    0%  { transform: scale(0.2); opacity: 0; }
+    70% { transform: scale(1.25); }
+    100%{ transform: scale(1);   opacity: 1; }
+  }
+
+  /* タップエフェクト */
+  .bang {
+    position: fixed;
+    pointer-events: none;
+    font-size: 5.5rem;
+    z-index: 100;
+    animation: bangAnim 0.55s ease-out forwards;
+    transform-origin: center;
+  }
+  @keyframes bangAnim {
+    0%  { opacity: 1; transform: scale(0.2) translateY(0); }
+    40% { opacity: 1; transform: scale(2.0) translateY(-15px); }
+    100%{ opacity: 0; transform: scale(2.6) translateY(-60px); }
+  }
+  /* 黄金ヒット時の特別エフェクト */
+  .bang-gold {
+    position: fixed;
+    pointer-events: none;
+    font-size: 3.5rem;
+    z-index: 100;
+    animation: bangGoldAnim 0.8s ease-out forwards;
+  }
+  @keyframes bangGoldAnim {
+    0%  { opacity: 1; transform: scale(0.5) translateY(0) rotate(0deg); }
+    50% { opacity: 1; transform: scale(1.8) translateY(-30px) rotate(180deg); }
+    100%{ opacity: 0; transform: scale(0.5) translateY(-80px) rotate(360deg); }
+  }
+
+  /* リザルトもぐら */
+  #result-mole {
+    position: fixed;
+    bottom: -280px;
+    left: -20px;
+    font-size: 0;
+    z-index: 10;
+    transition: bottom 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+    transform: rotate(-18deg);
+    pointer-events: none;
+  }
+  #result-mole::after {
+    content: '🐹';
+    font-size: 180px;
+    display: block;
+    filter: drop-shadow(6px 6px 10px rgba(0,0,0,0.35));
+  }
+  #result-mole.show { bottom: 10px; }
+
+  /* リザルトフラッシュ */
+  #flash-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    pointer-events: none;
+    animation: flashAnim 0.6s ease-out forwards;
+  }
+  #flash-overlay.show { display: block; }
+  @keyframes flashAnim {
+    0%  { background: rgba(255,255,200,0.95); }
+    40% { background: rgba(255,220,0,0.6); }
+    100%{ background: rgba(255,220,0,0); }
+  }
+
+  /* BGMボタン */
+  #bgm-btn {
+    position: fixed;
+    top: 14px; right: 14px;
+    z-index: 300;
+    background: white;
+    border: none;
+    border-radius: 50%;
+    width: 54px; height: 54px;
+    font-size: 1.7rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    transition: transform 0.1s;
+  }
+  #bgm-btn:active { transform: scale(0.9); }
+
+  /* 凡例 */
+  #legend {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+
+<button id="bgm-btn" onclick="toggleBGM()" title="BGM">🎵</button>
+
+<div id="countdown-overlay"><div id="countdown-num">3</div></div>
+<div id="result-mole"></div>
+<div id="flash-overlay"></div>
+
+<div id="game-wrap">
+  <div id="scoreboard">
+    <div class="score-box">🌟 <span id="score">0</span> てん</div>
+    <div class="score-box">⏰ <span id="timer">50</span> びょう</div>
+  </div>
+
+  <div id="legend">
+    <div class="legend-item">🐹 ふつう +1</div>
+    <div class="legend-item">🐭 はやい! +1</div>
+    <div class="legend-item">🌟 きんもぐら +3</div>
+  </div>
+
+  <div id="grid"></div>
+
+  <div id="message">したのボタンをおしてね！</div>
+  <button id="start-btn" onclick="startCountdown()">🎮 スタート！</button>
+</div>
+
+<!-- BGM / SE -->
+<audio id="bgm-title"  src="sounds/bgm_001.mp3" loop></audio>
+<audio id="bgm-game"   src="sounds/bgm_002.mp3" loop></audio>
+<audio id="se-result"  src="sounds/se_002.mp3"></audio>
+
+<script>
+  // ===== 定数 =====
+  const HOLE_COUNT   = 12;
+  const DEFAULT_TIME = 50;
+  const GOLD_CHANCE  = 0.12;  // 12%で黄金
+  const QUICK_CHANCE = 0.20;  // 20%で即逃げ
+  const QUICK_UP_MS  = 380;   // 即逃げもぐらの滞在時間(ms)
+  const NORMAL_UP_MIN = 1100;
+  const NORMAL_UP_MAX = 1600;
+
+  // ===== 状態 =====
+  let score = 0;
+  let timeLeft = DEFAULT_TIME;
+  let gameActive = false;
+  let moleTimers = [];
+  let countdownTimer = null;
+  let lastHole = -1;
+  let bgmEnabled = true; // デフォルトON（自動再生狙い）
+
+  // ===== グリッド生成 =====
+  const grid = document.getElementById('grid');
+  const holeEls = [];
+  const moleEls = [];
+  for (let i = 0; i < HOLE_COUNT; i++) {
+    const hole = document.createElement('div');
+    hole.className = 'hole';
+    hole.id = 'h' + i;
+    const mole = document.createElement('div');
+    mole.className = 'mole';
+    mole.id = 'm' + i;
+    hole.appendChild(mole);
+    grid.appendChild(hole);
+    holeEls.push(hole);
+    moleEls.push(mole);
+  }
+
+  // ===== Audio =====
+  const bgmTitle  = document.getElementById('bgm-title');
+  const bgmGame   = document.getElementById('bgm-game');
+  const seResult  = document.getElementById('se-result');
+  const bgmBtn    = document.getElementById('bgm-btn');
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function resumeCtx() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  // タイトルBGM自動再生（ブラウザ制限対応: 最初のインタラクションで再生）
+  function tryPlayTitle() {
+    if (!bgmEnabled) return;
+    bgmTitle.play().catch(() => {});
+  }
+  // ページロード時に試みる（許可されていれば鳴る）
+  bgmTitle.play().catch(() => {});
+
+  // 最初のユーザー操作で確実に再生
+  document.addEventListener('pointerdown', function onFirst() {
+    resumeCtx();
+    tryPlayTitle();
+    document.removeEventListener('pointerdown', onFirst);
+  }, { once: true });
+
+  function stopAll() {
+    bgmTitle.pause(); bgmTitle.currentTime = 0;
+    bgmGame.pause();  bgmGame.currentTime  = 0;
+    seResult.pause(); seResult.currentTime = 0;
+  }
+
+  function toggleBGM() {
+    resumeCtx();
+    bgmEnabled = !bgmEnabled;
+    bgmBtn.textContent = bgmEnabled ? '🎵' : '🔇';
+    if (!bgmEnabled) {
+      bgmTitle.pause();
+      bgmGame.pause();
+    } else {
+      // 状態に応じて再生再開
+      if (gameActive) { bgmGame.play().catch(() => {}); }
+      else            { tryPlayTitle(); }
+    }
+  }
+
+  // Web Audio SFX
+  function playHitSound(gold) {
+    try {
+      const osc  = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      if (gold) {
+        osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.35);
+      } else {
+        osc.frequency.setValueAtTime(700, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(180, audioCtx.currentTime + 0.18);
+        gain.gain.setValueAtTime(0.45, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.22);
+      }
+    } catch(e) {}
+  }
+
+  function playCountSound(isStart) {
+    try {
+      const osc  = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.value = isStart ? 880 : 440;
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+    } catch(e) {}
+  }
+
+  // ===== 穴クリック処理 =====
+  holeEls.forEach((hole, i) => {
+    hole.addEventListener('pointerdown', (e) => {
+      resumeCtx();
+      if (!gameActive) return;
+      const mole = moleEls[i];
+      if (mole.classList.contains('up') && !mole.classList.contains('hit')) {
+        const isGold  = mole.dataset.type === 'gold';
+        const pts     = isGold ? 3 : 1;
+        whack(i, e.clientX, e.clientY, isGold, pts);
+      }
+    });
+  });
+
+  function whack(i, x, y, isGold, pts) {
+    score += pts;
+    document.getElementById('score').textContent = score;
+    const mole = moleEls[i];
+    mole.classList.remove('up');
+    mole.classList.add('hit');
+    playHitSound(isGold);
+    showBang(x, y, isGold, pts);
+    setTimeout(() => {
+      mole.classList.remove('hit', 'type-normal', 'type-quick', 'type-gold');
+      mole.dataset.type = '';
+    }, 300);
+  }
+
+  function showBang(x, y, isGold, pts) {
+    if (isGold) {
+      // 黄金は星を複数飛ばす
+      ['⭐','✨','🌟','💛','⭐'].forEach((em, idx) => {
+        const el = document.createElement('div');
+        el.className = 'bang-gold';
+        el.textContent = em;
+        el.style.left = (x - 28 + (idx - 2) * 20) + 'px';
+        el.style.top  = (y - 28) + 'px';
+        el.style.animationDelay = (idx * 0.05) + 's';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 900);
+      });
+      // +3 テキスト
+      const pt = document.createElement('div');
+      pt.className = 'bang';
+      pt.textContent = '+3🏆';
+      pt.style.left = (x - 44) + 'px';
+      pt.style.top  = (y - 60) + 'px';
+      pt.style.fontSize = '3rem';
+      document.body.appendChild(pt);
+      setTimeout(() => pt.remove(), 560);
+    } else {
+      const emojis = ['💥','⭐','✨','🌟','💫'];
+      const el = document.createElement('div');
+      el.className = 'bang';
+      el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      el.style.left = (x - 44) + 'px';
+      el.style.top  = (y - 44) + 'px';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 560);
+    }
+  }
+
+  // ===== もぐら出現 =====
+  function getRandomHole() {
+    let idx;
+    let tries = 0;
+    do {
+      idx = Math.floor(Math.random() * HOLE_COUNT);
+      tries++;
+    } while ((idx === lastHole || moleEls[idx].classList.contains('up')) && tries < 20);
+    return idx;
+  }
+
+  function spawnMole() {
+    if (!gameActive) return;
+    const idx  = getRandomHole();
+    lastHole   = idx;
+    const mole = moleEls[idx];
+
+    // タイプ決定
+    const r = Math.random();
+    let type, upTime;
+    if (r < GOLD_CHANCE) {
+      type = 'gold';
+      upTime = 1000 + Math.random() * 400;
+    } else if (r < GOLD_CHANCE + QUICK_CHANCE) {
+      type = 'quick';
+      upTime = QUICK_UP_MS;
+    } else {
+      type = 'normal';
+      upTime = NORMAL_UP_MIN + Math.random() * (NORMAL_UP_MAX - NORMAL_UP_MIN);
+    }
+
+    mole.dataset.type = type;
+    mole.className = `mole type-${type}`;
+    // 少しdelayしてupクラス追加（CSSトランジション発火）
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => mole.classList.add('up'));
+    });
+
+    const t = setTimeout(() => {
+      if (mole.classList.contains('up') && !mole.classList.contains('hit')) {
+        mole.classList.remove('up');
+      }
+      if (gameActive) {
+        const nextDelay = type === 'quick' ? 200 + Math.random() * 200
+                                            : 350 + Math.random() * 350;
+        setTimeout(spawnMole, nextDelay);
+      }
+    }, upTime);
+    moleTimers.push(t);
+  }
+
+  // 同時出現数を増やす（ゲーム中は4匹同時スポーン）
+  function spawnWave(count) {
+    for (let i = 0; i < count; i++) {
+      setTimeout(spawnMole, i * 120);
+    }
+  }
+
+  // ===== カウントダウン =====
+  function startCountdown() {
+    resumeCtx();
+    document.getElementById('start-btn').style.display = 'none';
+    document.getElementById('message').textContent = '';
+    document.getElementById('result-mole').classList.remove('show');
+
+    // リセット
+    score = 0; timeLeft = DEFAULT_TIME;
+    document.getElementById('score').textContent = 0;
+    document.getElementById('timer').textContent = DEFAULT_TIME;
+    moleEls.forEach(m => {
+      m.className = 'mole';
+      m.dataset.type = '';
+    });
+
+    // タイトルBGM停止
+    bgmTitle.pause(); bgmTitle.currentTime = 0;
+
+    const overlay = document.getElementById('countdown-overlay');
+    const numEl   = document.getElementById('countdown-num');
+    overlay.classList.add('show');
+    let count = 3;
+
+    function flash(text, isStart) {
+      numEl.textContent = text;
+      numEl.style.animation = 'none';
+      void numEl.offsetWidth;
+      numEl.style.animation = 'popIn 0.4s ease-out';
+      playCountSound(isStart || false);
+    }
+    flash(count);
+
+    const cdInt = setInterval(() => {
+      count--;
+      if (count > 0) {
+        flash(count);
+      } else {
+        flash('スタート！', true);
+        clearInterval(cdInt);
+        setTimeout(() => {
+          overlay.classList.remove('show');
+          startGame();
+        }, 700);
+      }
+    }, 1000);
+  }
+
+  // ===== ゲーム開始 =====
+  function startGame() {
+    gameActive = true;
+    document.getElementById('message').textContent = 'たたけ！たたけ！';
+
+    // ゲームBGM
+    if (bgmEnabled) bgmGame.play().catch(() => {});
+
+    // 最初に4匹同時出現、以降は個別スポーン
+    spawnWave(4);
+
+    countdownTimer = setInterval(() => {
+      timeLeft--;
+      document.getElementById('timer').textContent = timeLeft;
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+  }
+
+  // ===== ゲーム終了 =====
+  function endGame() {
+    gameActive = false;
+    clearInterval(countdownTimer);
+    moleTimers.forEach(clearTimeout);
+    moleTimers = [];
+    moleEls.forEach(m => m.classList.remove('up'));
+
+    // ゲームBGM停止
+    bgmGame.pause(); bgmGame.currentTime = 0;
+
+    let msg;
+    if      (score >= 50) msg = '🏆 まさに天才！！';
+    else if (score >= 35) msg = '🎉 すごい！よくできました！';
+    else if (score >= 20) msg = '😊 じょうずじょうず！';
+    else if (score >= 10) msg = '👍 もう少し！がんばれ！';
+    else                  msg = '🐹 もっとがんばろう！';
+
+    document.getElementById('message').textContent = msg + '　' + score + 'てん！';
+    document.getElementById('start-btn').textContent = '🔄 もう一かい';
+    document.getElementById('start-btn').style.display = 'inline-block';
+
+    // リザルト演出
+    setTimeout(() => {
+      // フラッシュ
+      const flash = document.getElementById('flash-overlay');
+      flash.classList.remove('show');
+      void flash.offsetWidth;
+      flash.classList.add('show');
+      setTimeout(() => flash.classList.remove('show'), 700);
+
+      // SE
+      if (bgmEnabled) seResult.play().catch(() => {});
+
+      // 左下からもぐら
+      document.getElementById('result-mole').classList.add('show');
+
+      // タイトルBGM再開
+      setTimeout(() => {
+        if (bgmEnabled) tryPlayTitle();
+      }, 1500);
+    }, 200);
+  }
+</script>
+</body>
+</html>
