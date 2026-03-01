@@ -58,6 +58,7 @@ html, body {touch-action: manipulation;}
 .grid{display:grid;gap:10px;}
 .hole{width:90px;height:90px;background:var(--hole);border-radius:50%;position:relative;overflow:hidden;cursor:pointer;box-shadow:inset 0 6px 16px rgba(0,0,0,.5),0 4px 8px rgba(0,0,0,.3);transition:transform .05s;}
 .hole:active{transform:scale(.93);}
+.hole{touch-action: manipulation;}
 .mole{position:absolute;bottom:-110%;left:50%;transform:translateX(-50%);font-size:0;line-height:1;transition:bottom .13s ease-out;cursor:pointer;}
 .mole::after{font-size:52px;display:block;}
 .mole.up{bottom:3%;}
