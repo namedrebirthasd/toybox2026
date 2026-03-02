@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>CAT CARD BATTLE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Boogaloo&family=Kosugi+Maru&display=swap');
+:root{
+  --bg:#0a0a0f; --bg2:#12121a; --panel:#1a1a28; --border:#2a2a40;
+  --gold:#FFD700; --gold2:#FFA500; --red:#ff3a3a; --cyan:#00e5ff;
+  --purple:#b57bee; --green:#39ff14; --pink:#ff4dbb; --text:#e8e8f0;
+  --text2:rgba(232,232,240,.5);
+  --p1c:#00e5ff; --p2c:#ff4dbb;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;}
+body{
+  font-family:'Kosugi Maru',sans-serif;
+  background:var(--bg);color:var(--text);
+  display:flex;align-items:center;justify-content:center;
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.35;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
+}
+
+/* ── SCREEN WRAPPER ── */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .35s;}
+.screen.hidden{opacity:0;pointer-events:none;}
+
+/* ════════════════════
+   TITLE
+════════════════════ */
+#title-screen{background:radial-gradient(ellipse at 50% 30%,#1a0a30 0%,var(--bg) 70%);}
+.title-glow{
+  font-family:'Boogaloo',cursive;font-size:clamp(2.4rem,6vw,4.5rem);
+  color:var(--gold);letter-spacing:4px;
+  text-shadow:0 0 30px rgba(255,215,0,.7),3px 3px 0 #4a2a00;
+  animation:tpulse 3s ease-in-out infinite;
+}
+@keyframes tpulse{0%,100%{text-shadow:0 0 30px rgba(255,215,0,.7),3px 3px 0 #4a2a00;}50%{text-shadow:0 0 60px rgba(255,215,0,1),3px 3px 0 #4a2a00;}}
+.title-sub{font-size:.9rem;color:var(--text2);letter-spacing:6px;margin-bottom:36px;}
+.title-cats{font-size:3rem;margin-bottom:12px;animation:float 2s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+.mbtn{
+  display:block;width:260px;margin:10px auto;padding:15px;text-align:center;
+  font-family:'Boogaloo',cursive;font-size:1.5rem;letter-spacing:2px;
+  border:2px solid;border-radius:4px;cursor:pointer;background:transparent;
+  transition:box-shadow .15s,transform .1s;
+}
+.mbtn:active{transform:scale(.96);}
+.mbtn.cpu{border-color:var(--cyan);color:var(--cyan);}
+.mbtn.cpu:hover{box-shadow:0 0 24px rgba(0,229,255,.5);}
+.mbtn.pvp{border-color:var(--pink);color:var(--pink);}
+.mbtn.pvp:hover{box-shadow:0 0 24px rgba(255,77,187,.5);}
+#title-hi{font-size:.8rem;color:var(--text2);margin-top:18px;line-height:1.8;}
+
+/* ════════════════════
+   DRAFT SCREEN
+════════════════════ */
+#draft-screen{
+  background:radial-gradient(ellipse at 50% 40%,#0d0020 0%,var(--bg) 70%);
+  gap:0;padding:12px;
+}
+#draft-title{
+  font-family:'Boogaloo',cursive;font-size:clamp(1.2rem,3vw,2rem);
+  color:var(--gold);letter-spacing:3px;margin-bottom:10px;
+}
+
+/* All cards grid */
+#draft-pool{
+  display:flex;flex-wrap:wrap;justify-content:center;gap:6px;
+  max-width:900px;margin-bottom:12px;
+  max-height:38vh;overflow:hidden;
+}
+.pool-card{
+  width:52px;height:70px;border-radius:6px;
+  background:var(--panel);border:2px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:1.6rem;cursor:default;
+  transition:transform .1s,box-shadow .1s,border-color .1s;
+  position:relative;
+}
+.pool-card .pc-name{font-size:.38rem;color:var(--text2);position:absolute;bottom:3px;text-align:center;line-height:1.1;padding:0 2px;}
+.pool-card.highlight-p1{
+  border-color:var(--p1c);
+  box-shadow:0 0 16px var(--p1c);
+  transform:scale(1.15);
+  z-index:2;
+}
+.pool-card.highlight-p2{
+  border-color:var(--p2c);
+  box-shadow:0 0 16px var(--p2c);
+  transform:scale(1.15);
+  z-index:2;
+}
+.pool-card.picked-p1{border-color:var(--p1c);background:rgba(0,229,255,.12);opacity:.5;}
+.pool-card.picked-p2{border-color:var(--p2c);background:rgba(255,77,187,.12);opacity:.5;}
+
+/* Draft result panels */
+#draft-results{
+  display:flex;gap:20px;justify-content:center;align-items:flex-start;
+  width:100%;max-width:800px;
+}
+.draft-side{
+  flex:1;max-width:340px;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;
+  padding:8px;min-height:100px;
+}
+.draft-side-label{
+  font-family:'Boogaloo',cursive;font-size:1rem;margin-bottom:6px;
+  padding-bottom:4px;border-bottom:1px solid var(--border);
+}
+.draft-side.p1-side .draft-side-label{color:var(--p1c);}
+.draft-side.p2-side .draft-side-label{color:var(--p2c);}
+.draft-picked-cards{display:flex;gap:8px;flex-wrap:wrap;}
+.dpc{
+  width:56px;height:76px;border-radius:6px;
+  border:2px solid var(--border);
+  background:var(--panel);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:1.8rem;position:relative;
+  animation:dpcIn .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes dpcIn{0%{transform:scale(0) rotate(-20deg);opacity:0;}100%{transform:scale(1) rotate(0);opacity:1;}}
+.dpc .dpc-name{font-size:.38rem;color:var(--text2);position:absolute;bottom:3px;text-align:center;line-height:1.1;padding:0 2px;}
+.draft-side.p1-side .dpc{border-color:var(--p1c);}
+.draft-side.p2-side .dpc{border-color:var(--p2c);}
+
+#draft-status{
+  font-family:'Boogaloo',cursive;font-size:1.2rem;color:var(--gold);
+  margin-top:8px;min-height:28px;text-align:center;
+  animation:blinkStatus 1s ease-in-out infinite;
+}
+@keyframes blinkStatus{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* DECIDE flash */
+#decide-flash{
+  position:fixed;inset:0;z-index:800;pointer-events:none;opacity:0;
+}
+#decide-flash.p1{animation:decideFlashP1 .4s ease-out forwards;}
+#decide-flash.p2{animation:decideFlashP2 .4s ease-out forwards;}
+@keyframes decideFlashP1{0%{opacity:.6;background:rgba(0,229,255,.4);}100%{opacity:0;}}
+@keyframes decideFlashP2{0%{opacity:.6;background:rgba(255,77,187,.4);}100%{opacity:0;}}
+
+/* ════════════════════
+   BATTLE SCREEN  (横レイアウト)
+════════════════════ */
+#battle-screen{
+  background:radial-gradient(ellipse at 50% 50%,#0d0d1f 0%,#05050a 100%);
+  padding:0;justify-content:flex-start;
+}
+
+#battle-top{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  padding:6px 14px;background:rgba(0,0,0,.4);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.hud-cell{text-align:center;}
+.hud-lbl{font-size:.6rem;color:var(--text2);}
+.hud-val{font-family:'Boogaloo',cursive;font-size:1rem;color:var(--gold);}
+#log-short{font-size:.72rem;color:var(--cyan);max-width:200px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+
+/* ── MAIN ARENA (horizontal) ── */
+#main-arena{
+  flex:1;width:100%;
+  display:flex;flex-direction:row;align-items:stretch;
+  overflow:hidden;
+  min-height:0;
+}
+
+/* PLAYER COLUMN */
+.player-col{
+  flex:1;display:flex;flex-direction:column;
+  padding:8px;gap:6px;
+  min-width:0;
+}
+.player-col.p1-col{border-right:1px solid var(--border);}
+
+.pcol-label{
+  font-family:'Boogaloo',cursive;font-size:.85rem;
+  padding:2px 8px;border-radius:4px;display:inline-block;align-self:flex-start;
+}
+.p1-col .pcol-label{background:rgba(0,229,255,.1);color:var(--p1c);border:1px solid rgba(0,229,255,.3);}
+.p2-col .pcol-label{background:rgba(255,77,187,.1);color:var(--p2c);border:1px solid rgba(255,77,187,.3);}
+
+/* Active fighter card */
+.active-card{
+  background:rgba(255,255,255,.04);border-radius:8px;
+  border:1px solid var(--border);
+  padding:8px;display:flex;gap:8px;align-items:flex-start;
+  flex-shrink:0;
+  transition:box-shadow .3s;
+}
+.active-card.attacking{animation:cardShake .22s ease-out;}
+@keyframes cardShake{0%,100%{transform:translateX(0);}30%{transform:translateX(7px);}70%{transform:translateX(-5px);};}
+.p1-col .active-card{border-color:rgba(0,229,255,.25);}
+.p2-col .active-card{border-color:rgba(255,77,187,.25);}
+
+.card-art{
+  width:64px;height:86px;flex-shrink:0;border-radius:6px;
+  background:var(--panel);border:2px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:2.2rem;overflow:hidden;position:relative;
+}
+.card-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:4px;}
+.card-art .art-type{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:.4rem;color:var(--gold);background:rgba(0,0,0,.7);padding:1px;}
+
+.card-stats{flex:1;min-width:0;}
+.cname{font-family:'Boogaloo',cursive;font-size:.95rem;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ctype{font-size:.58rem;color:var(--text2);margin-bottom:4px;}
+.hp-row{margin-bottom:3px;}
+.hp-nums{display:flex;justify-content:space-between;font-size:.62rem;margin-bottom:2px;}
+.hp-bg{height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;}
+.hp-fill{height:100%;border-radius:4px;transition:width .5s ease,background .5s;}
+.hp-hi{background:linear-gradient(90deg,#39ff14,#00e676);}
+.hp-mi{background:linear-gradient(90deg,#ffca28,#ffa000);}
+.hp-lo{background:linear-gradient(90deg,#ff3a3a,#b71c1c);animation:hpblink 1s ease-in-out infinite;}
+@keyframes hpblink{0%,100%{opacity:1;}50%{opacity:.4;}}
+.atk-row{font-size:.65rem;color:var(--text2);}
+.atk-val{font-family:'Boogaloo',cursive;font-size:.95rem;color:var(--red);}
+.skill-tag{font-size:.52rem;color:var(--purple);border:1px solid rgba(181,123,238,.4);padding:1px 5px;border-radius:3px;display:inline-block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+
+/* Bench (remaining) */
+.bench-label{font-size:.6rem;color:var(--text2);}
+.bench-cards{display:flex;gap:5px;flex-wrap:wrap;}
+.bench-mini{
+  width:38px;height:52px;border-radius:5px;
+  background:var(--panel);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:1.3rem;
+}
+
+/* CENTER VS column */
+#vs-col{
+  width:70px;flex-shrink:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;padding:4px;
+}
+.vs-text{
+  font-family:'Boogaloo',cursive;font-size:2.2rem;color:var(--gold);
+  text-shadow:0 0 20px rgba(255,215,0,.7);
+}
+#turn-badge{
+  font-family:'Boogaloo',cursive;font-size:.75rem;color:var(--gold);
+  border:1px solid rgba(255,215,0,.3);padding:3px 6px;border-radius:4px;text-align:center;
+}
+
+/* Battle log */
+#battle-log{
+  width:100%;max-height:80px;overflow-y:auto;
+  background:rgba(0,0,0,.5);border-top:1px solid var(--border);
+  padding:4px 12px;font-size:.68rem;color:var(--text2);
+  scroll-behavior:smooth;flex-shrink:0;
+}
+.le{padding:1px 0;border-bottom:1px solid rgba(255,255,255,.03);}
+.le.la{color:var(--cyan);}.le.lc{color:var(--gold);}.le.ls{color:var(--purple);}
+.le.lk{color:var(--red);font-weight:bold;}.le.ly{color:var(--text2);}
+
+/* Battle controls */
+#battle-ctrl{
+  width:100%;display:flex;justify-content:center;gap:10px;
+  padding:8px;background:rgba(0,0,0,.4);border-top:1px solid var(--border);flex-shrink:0;
+}
+.cbtn{
+  padding:8px 22px;font-family:'Boogaloo',cursive;font-size:1.05rem;
+  background:transparent;border:2px solid var(--gold);color:var(--gold);
+  border-radius:4px;cursor:pointer;transition:all .15s;
+}
+.cbtn:hover{background:rgba(255,215,0,.1);box-shadow:0 0 14px rgba(255,215,0,.4);}
+.cbtn:disabled{opacity:.25;cursor:default;}
+.cbtn.quit{border-color:#444;color:#555;font-size:.9rem;}
+.cbtn.quit:hover{background:rgba(255,255,255,.05);box-shadow:none;}
+
+/* ════════════════════
+   SKILL CUTIN
+════════════════════ */
+#skill-cutin{
+  position:fixed;inset:0;z-index:500;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  pointer-events:none;opacity:0;
+  background:rgba(0,0,0,.88);backdrop-filter:blur(6px);
+}
+#skill-cutin.show{animation:cutinAnim .95*2s ease-out forwards;}
+@keyframes cutinAnim{0%{opacity:0;}8%{opacity:1;}72%{opacity:1;}100%{opacity:0;}}
+#skill-cutin::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px);pointer-events:none;}
+#cutin-emoji{font-size:5rem;animation:cspin .6s ease-out;}
+@keyframes cspin{0%{transform:scale(0) rotate(-180deg);}100%{transform:scale(1) rotate(0deg);}}
+#cutin-cname{font-family:'Boogaloo',cursive;font-size:clamp(1.2rem,4vw,2.2rem);color:white;letter-spacing:3px;text-shadow:0 0 30px var(--cc,#b57bee);animation:cslide .4s ease-out;margin:6px 0;}
+@keyframes cslide{0%{transform:translateX(-80px);opacity:0;}100%{transform:translateX(0);opacity:1;}}
+#cutin-sname{font-family:'Boogaloo',cursive;font-size:clamp(1.8rem,6vw,4rem);color:var(--cc,#b57bee);text-shadow:0 0 40px var(--cc,#b57bee),0 0 80px rgba(181,123,238,.4);letter-spacing:4px;animation:czoom .5s cubic-bezier(.34,1.56,.64,1);}
+@keyframes czoom{0%{transform:scale(.2) rotate(-8deg);opacity:0;}100%{transform:scale(1) rotate(0);opacity:1;}}
+#cutin-desc{font-size:.85rem;color:rgba(255,255,255,.65);margin-top:8px;letter-spacing:2px;}
+
+/* ════════════════════
+   DMG FLOATERS
+════════════════════ */
+.dmgf{
+  position:fixed;z-index:600;pointer-events:none;
+  font-family:'Boogaloo',cursive;font-size:1.8rem;font-weight:bold;
+  text-shadow:2px 2px 0 rgba(0,0,0,.6);
+  animation:dfloat .9s ease-out forwards;
+}
+.dmgf.normal{color:var(--red);}
+.dmgf.crit{color:var(--gold);font-size:2.4rem;}
+.dmgf.heal{color:var(--green);}
+.dmgf.debuff{color:var(--purple);}
+@keyframes dfloat{0%{opacity:1;transform:translateY(0) scale(.8);}20%{opacity:1;transform:translateY(-18px) scale(1.2);}100%{opacity:0;transform:translateY(-65px) scale(.85);}}
+
+/* ════════════════════
+   RESULT
+════════════════════ */
+#result-screen{background:radial-gradient(ellipse at 50% 40%,#1a0a0a 0%,var(--bg) 70%);}
+#res-title{font-family:'Boogaloo',cursive;font-size:clamp(2rem,6vw,3.5rem);margin-bottom:6px;animation:resin .6s cubic-bezier(.34,1.56,.64,1);}
+@keyframes resin{0%{transform:scale(.3) rotate(-10deg);opacity:0;}100%{transform:scale(1);opacity:1;}}
+.rwin{color:var(--gold);text-shadow:0 0 30px rgba(255,215,0,.8);}
+.rlose{color:var(--red);text-shadow:0 0 30px rgba(255,58,58,.8);}
+.rdraw{color:var(--cyan);}
+#res-sub{font-size:.9rem;color:var(--text2);margin-bottom:14px;}
+.rcard-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:14px 0;}
+.rcard{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;min-width:80px;}
+.rcard-em{font-size:2rem;}.rcard-nm{font-size:.65rem;color:var(--text2);margin-top:3px;}.rcard-hp{font-family:'Boogaloo',cursive;font-size:1rem;color:var(--green);}
+.rbtn{margin:6px;padding:12px 30px;font-family:'Boogaloo',cursive;font-size:1.3rem;background:transparent;border:2px solid;border-radius:4px;cursor:pointer;transition:all .15s;}
+.rbtn.rp{border-color:var(--cyan);color:var(--cyan);}.rbtn.rp:hover{background:rgba(0,229,255,.1);box-shadow:0 0 18px rgba(0,229,255,.4);}
+.rbtn.rt{border-color:var(--gold);color:var(--gold);}.rbtn.rt:hover{background:rgba(255,215,0,.1);box-shadow:0 0 18px rgba(255,215,0,.4);}
+
+/* ── PARTICLES & FLASH ── */
+#hit-overlay{position:fixed;inset:0;z-index:400;pointer-events:none;opacity:0;}
+#hit-overlay.fl{animation:hfl .28s ease-out forwards;}
+@keyframes hfl{0%{opacity:.55;background:white;}100%{opacity:0;}}
+#decide-flash{position:fixed;inset:0;z-index:800;pointer-events:none;opacity:0;}
+.prt{position:fixed;z-index:600;pointer-events:none;width:7px;height:7px;border-radius:50%;animation:pex var(--dur,.55s) ease-out forwards;}
+@keyframes pex{0%{transform:translate(0,0) scale(1);opacity:1;}100%{transform:translate(var(--tx,0),var(--ty,-50px)) scale(0);opacity:0;}}
+
+#bgm-btn{position:fixed;top:8px;right:8px;z-index:2000;background:rgba(255,255,255,.1);border:1px solid var(--border);border-radius:50%;width:36px;height:36px;font-size:1rem;cursor:pointer;color:white;}
+</style>
+</head>
+<body>
+<button id="bgm-btn" onclick="toggleBGM()">🎵</button>
+<div id="hit-overlay"></div>
+<div id="decide-flash"></div>
+<div id="skill-cutin">
+  <div id="cutin-emoji"></div>
+  <div id="cutin-cname"></div>
+  <div id="cutin-sname"></div>
+  <div id="cutin-desc"></div>
+</div>
+
+<!-- ═══ TITLE ═══ -->
+<div id="title-screen" class="screen">
+  <div class="title-cats">🐱⚔️🐱</div>
+  <div class="title-glow">CAT CARD BATTLE</div>
+  <div class="title-sub">MEOW OR BE MEOWED</div>
+  <button class="mbtn cpu" onclick="beginDraft('cpu')">⚔️ VS CPU</button>
+  <button class="mbtn pvp" onclick="beginDraft('pvp')">👥 VS プレイヤー2</button>
+  <div id="title-hi"></div>
+</div>
+
+<!-- ═══ DRAFT ═══ -->
+<div id="draft-screen" class="screen hidden">
+  <div id="draft-title">⚡ カード ドラフト ⚡</div>
+  <div id="draft-pool"></div>
+  <div id="draft-results">
+    <div class="draft-side p1-side">
+      <div class="draft-side-label">🔵 PLAYER 1</div>
+      <div class="draft-picked-cards" id="p1-picks"></div>
+    </div>
+    <div class="draft-side p2-side">
+      <div class="draft-side-label" id="p2-draft-label">🔴 PLAYER 2</div>
+      <div class="draft-picked-cards" id="p2-picks"></div>
+    </div>
+  </div>
+  <div id="draft-status">シャッフル中…</div>
+</div>
+
+<!-- ═══ BATTLE ═══ -->
+<div id="battle-screen" class="screen hidden">
+  <div id="battle-top">
+    <div class="hud-cell"><div class="hud-lbl">TURN</div><div class="hud-val" id="turn-disp">1</div></div>
+    <div id="log-short">準備中…</div>
+    <div class="hud-cell"><div class="hud-lbl" id="mode-lbl">VS CPU</div><div class="hud-val" id="mode-val">BATTLE</div></div>
+  </div>
+
+  <div id="main-arena">
+    <!-- P1 column -->
+    <div class="player-col p1-col" id="p1-col">
+      <div class="pcol-label">🔵 PLAYER 1</div>
+      <div class="active-card" id="ac-p1">
+        <div class="card-art" id="art-p1">
+          <span id="em-p1">🐱</span>
+          <span class="art-type" id="atype-p1"></span>
+        </div>
+        <div class="card-stats">
+          <div class="cname" id="cn-p1">—</div>
+          <div class="ctype" id="ct-p1"></div>
+          <div class="hp-row">
+            <div class="hp-nums"><span>HP</span><span id="hp-num-p1">—</span></div>
+            <div class="hp-bg"><div class="hp-fill hp-hi" id="hp-fill-p1" style="width:100%"></div></div>
+          </div>
+          <div class="atk-row">ATK <span class="atk-val" id="atk-p1">—</span></div>
+          <div class="skill-tag" id="sk-p1"></div>
+        </div>
+      </div>
+      <div class="bench-label">控え</div>
+      <div class="bench-cards" id="bench-p1"></div>
+    </div>
+
+    <!-- VS center -->
+    <div id="vs-col">
+      <div class="vs-text">VS</div>
+      <div id="turn-badge">ターン<br><span id="turn-num">1</span></div>
+    </div>
+
+    <!-- P2 column -->
+    <div class="player-col p2-col" id="p2-col">
+      <div class="pcol-label" id="p2-col-label">🔴 CPU</div>
+      <div class="active-card" id="ac-p2">
+        <div class="card-art" id="art-p2">
+          <span id="em-p2">🐱</span>
+          <span class="art-type" id="atype-p2"></span>
+        </div>
+        <div class="card-stats">
+          <div class="cname" id="cn-p2">—</div>
+          <div class="ctype" id="ct-p2"></div>
+          <div class="hp-row">
+            <div class="hp-nums"><span>HP</span><span id="hp-num-p2">—</span></div>
+            <div class="hp-bg"><div class="hp-fill hp-hi" id="hp-fill-p2" style="width:100%"></div></div>
+          </div>
+          <div class="atk-row">ATK <span class="atk-val" id="atk-p2">—</span></div>
+          <div class="skill-tag" id="sk-p2"></div>
+        </div>
+      </div>
+      <div class="bench-label">控え</div>
+      <div class="bench-cards" id="bench-p2"></div>
+    </div>
+  </div>
+
+  <div id="battle-log"></div>
+
+  <div id="battle-ctrl">
+    <button class="cbtn" id="btn-auto" onclick="toggleAuto()">▶ 自動</button>
+    <button class="cbtn" id="btn-next" onclick="doNextTurn()">次のターン</button>
+    <button class="cbtn quit" onclick="goTitle()">⏏ 降参</button>
+  </div>
+</div>
+
+<!-- ═══ RESULT ═══ -->
+<div id="result-screen" class="screen hidden">
+  <div id="res-title">—</div>
+  <div id="res-sub"></div>
+  <div class="rcard-row" id="res-cards"></div>
+  <div>
+    <button class="rbtn rp" onclick="startGame(lastMode)">🔄 もう一かい</button>
+    <button class="rbtn rt" onclick="goTitle()">🏠 タイトル</button>
+  </div>
+</div>
+
+<audio id="bgm-title"   src="sounds/bgm_title.mp3"   loop></audio>
+<audio id="bgm-battle"  src="sounds/bgm_battle.mp3"  loop></audio>
+<audio id="bgm-victory" src="sounds/bgm_victory.mp3"     ></audio>
+<audio id="bgm-defeat"  src="sounds/bgm_defeat.mp3"      ></audio>
+<audio id="se-attack"   src="sounds/se_attack.mp3"       ></audio>
+<audio id="se-critical" src="sounds/se_critical.mp3"     ></audio>
+<audio id="se-damage"   src="sounds/se_damage.mp3"       ></audio>
+<audio id="se-skill"    src="sounds/se_skill.mp3"        ></audio>
+<audio id="se-ko"       src="sounds/se_ko.mp3"           ></audio>
+
+<script>
+/* ═══════════════════════════════════
+   CARD DATABASE
+═══════════════════════════════════ */
+const DB=[
+  {id:'ninja',     name:'NINJA CAT',         emoji:'🥷', arch:'atk',type:'STEALTH',    tc:'#555',    ar:[4,6],hr:[8,12],
+   sk:{name:'SHADOW SLASH',   desc:'気づかれる前に斬る',      eff:'double_atk',    prob:.15,col:'#aaa',   ic:'💀'}},
+  {id:'knight',    name:'KNIGHT CAT',         emoji:'⚔️', arch:'def',type:'KNIGHT',     tc:'#7eb8f7', ar:[2,4],hr:[16,22],
+   sk:{name:'HOLY GUARD',     desc:'3ターンダメージ半減',      eff:'shield',        prob:.20,col:'#7eb8f7',ic:'🛡️'}},
+  {id:'smudge',    name:'SMUDGE LORD',         emoji:'😤', arch:'trk',type:'CHAOS',      tc:'#39ff14', ar:[3,5],hr:[10,14],
+   sk:{name:'TABLE RAGE',     desc:'相手ATKを2ターン半減',     eff:'atk_debuff',    prob:.22,col:'#39ff14',ic:'💢'}},
+  {id:'boss',      name:'BOSS CAT',            emoji:'💼', arch:'bal',type:'BUSINESS',   tc:'#ffd700', ar:[3,5],hr:[12,16],
+   sk:{name:'HOSTILE TAKEOVER',desc:'相手HPの15%を奪う',       eff:'drain',         prob:.18,col:'#ffd700',ic:'💰'}},
+  {id:'polite',    name:'POLITE CAT',          emoji:'🙇', arch:'def',type:'ETIQUETTE',  tc:'#ff4dbb', ar:[2,3],hr:[14,20],
+   sk:{name:'PURRFECT MANNERS',desc:'HPを8回復',               eff:'heal',          prob:.25,col:'#ff4dbb',ic:'✨'}},
+  {id:'bongo',     name:'BONGO CAT',           emoji:'🥁', arch:'trk',type:'RHYTHM',     tc:'#ff7043', ar:[3,5],hr:[11,15],
+   sk:{name:'RHYTHM REVOLUTION',desc:'ATK+3（2ターン）',       eff:'atk_buff',      prob:.20,col:'#ff7043',ic:'🎵'}},
+  {id:'pc',        name:'PC CAT',              emoji:'💻', arch:'trk',type:'TECH',        tc:'#00e5ff', ar:[3,5],hr:[10,14],
+   sk:{name:'DIGITAL DAEMON', desc:'70%大ダメ/30%自爆',        eff:'gamble',        prob:.18,col:'#00e5ff',ic:'⚡'}},
+  {id:'slot',      name:'SLOT MACHINE CAT',    emoji:'🎰', arch:'trk',type:'GRIND',       tc:'#b57bee', ar:[2,6],hr:[10,16],
+   sk:{name:'ETERNAL GRIND',  desc:'0〜ATK×3ランダム',         eff:'slot',          prob:.22,col:'#b57bee',ic:'🎲'}},
+  {id:'astro',     name:'ASTRO CAT',           emoji:'🚀', arch:'bal',type:'COSMOS',      tc:'#00e5ff', ar:[3,5],hr:[12,16],
+   sk:{name:'GRAVITY SHIFT',  desc:'次の攻撃を無効化',          eff:'dodge',         prob:.15,col:'#00e5ff',ic:'🌌'}},
+  {id:'wizard',    name:'WIZARD DEALER CAT',   emoji:'🧙', arch:'trk',type:'WIZARD',      tc:'#b57bee', ar:[2,5],hr:[10,14],
+   sk:{name:'ELEMENTAL SHUFFLE',desc:'相手スキルを1ターン封印', eff:'seal',          prob:.18,col:'#b57bee',ic:'🔮'}},
+  {id:'grumpy',    name:'GRUMPY CAT',          emoji:'😾', arch:'def',type:'MISERY',      tc:'#aaa',    ar:[2,3],hr:[15,20],
+   sk:{name:'ETERNAL SOUR',   desc:'相手ATKを永続-2',           eff:'atk_debuff_pm', prob:.20,col:'#aaa',   ic:'😡'}},
+  {id:'samurai',   name:'SAMURAI CAT',         emoji:'🗡️',arch:'atk',type:'HONOR',       tc:'#e53935', ar:[5,7],hr:[8,12],
+   sk:{name:'BLADE FURY',     desc:'3連続攻撃',                 eff:'multi_hit',     prob:.15,col:'#e53935',ic:'⚔️'}},
+  {id:'hotel',     name:'HOTEL MAN CAT',       emoji:'🏨', arch:'def',type:'HOSPITALITY', tc:'#ffd700', ar:[2,3],hr:[16,22],
+   sk:{name:'WHITE GLOVE SERVICE',desc:'HP+4 ATK+2',            eff:'full_buff',     prob:.18,col:'#ffd700',ic:'🛎️'}},
+];
+
+/* ═══════════════════════════════════
+   STATE
+═══════════════════════════════════ */
+let gameMode='cpu', lastMode='cpu';
+let p1State=null,p2State=null,p1Deck=[],p2Deck=[];
+let turnCount=1,gameRunning=false,autoMode=false,autoTimer=null;
+let bgmEnabled=true;
+const newFx=()=>({shield:0,atkBuff:0,atkDebuff:0,atkDebuffPm:0,dodge:false,sealed:false});
+
+/* ═══════════════════════════════════
+   AUDIO
+═══════════════════════════════════ */
+const actx=new(window.AudioContext||window.webkitAudioContext)();
+function rctx(){if(actx.state==='suspended')actx.resume();}
+document.addEventListener('pointerdown',function f(){rctx();document.removeEventListener('pointerdown',f);},{once:true});
+function playBGM(id){
+  ['bgm-title','bgm-battle','bgm-victory','bgm-defeat'].forEach(b=>{const e=document.getElementById(b);if(e)e.pause();});
+  if(!bgmEnabled)return;
+  const e=document.getElementById(id);if(e){e.currentTime=0;e.play().catch(()=>{});}
+}
+function playSE(id){if(!bgmEnabled)return;const e=document.getElementById(id);if(e){e.currentTime=0;e.play().catch(()=>{});}}
+function beep(type){
+  try{
+    const o=actx.createOscillator(),g=actx.createGain();
+    o.connect(g);g.connect(actx.destination);const t=actx.currentTime;
+    ({
+      attack:()=>{o.frequency.setValueAtTime(420,t);o.frequency.exponentialRampToValueAtTime(200,t+.12);g.gain.setValueAtTime(.28,t);g.gain.exponentialRampToValueAtTime(.001,t+.15);o.start();o.stop(t+.15);},
+      crit:  ()=>{[0,.06,.12].forEach((d,i)=>{const o2=actx.createOscillator(),g2=actx.createGain();o2.connect(g2);g2.connect(actx.destination);o2.frequency.value=[660,880,1100][i];g2.gain.setValueAtTime(.2,t+d);g2.gain.exponentialRampToValueAtTime(.001,t+d+.12);o2.start(t+d);o2.stop(t+d+.12);});},
+      skill: ()=>{o.type='sawtooth';o.frequency.setValueAtTime(180,t);o.frequency.exponentialRampToValueAtTime(750,t+.38);g.gain.setValueAtTime(.22,t);g.gain.exponentialRampToValueAtTime(.001,t+.42);o.start();o.stop(t+.42);},
+      damage:()=>{o.type='sawtooth';o.frequency.value=140;g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+.1);o.start();o.stop(t+.1);},
+      ko:    ()=>{o.frequency.setValueAtTime(280,t);o.frequency.exponentialRampToValueAtTime(40,t+.55);g.gain.setValueAtTime(.38,t);g.gain.exponentialRampToValueAtTime(.001,t+.6);o.start();o.stop(t+.6);},
+      heal:  ()=>{o.frequency.value=860;g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+.18);o.start();o.stop(t+.18);},
+      pick:  ()=>{o.frequency.setValueAtTime(600,t);o.frequency.exponentialRampToValueAtTime(1000,t+.12);g.gain.setValueAtTime(.25,t);g.gain.exponentialRampToValueAtTime(.001,t+.15);o.start();o.stop(t+.15);},
+    })[type]?.();
+  }catch(e){}
+}
+function toggleBGM(){
+  bgmEnabled=!bgmEnabled;
+  document.getElementById('bgm-btn').textContent=bgmEnabled?'🎵':'🔇';
+  if(!bgmEnabled)['bgm-title','bgm-battle','bgm-victory','bgm-defeat'].forEach(id=>{const e=document.getElementById(id);if(e)e.pause();});
+}
+
+/* ═══════════════════════════════════
+   SCREENS
+═══════════════════════════════════ */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+function goTitle(){
+  gameRunning=false;autoMode=false;clearTimeout(autoTimer);
+  showScreen('title-screen');playBGM('bgm-title');updateHi();
+}
+
+/* ═══════════════════════════════════
+   HI SCORE
+═══════════════════════════════════ */
+function todayKey(){const d=new Date();return`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;}
+function loadHi(){try{const r=JSON.parse(localStorage.getItem('ccb-hi')||'{}');if(r.date!==todayKey())return{cpu:0,pvp:0};return r.scores||{cpu:0,pvp:0};}catch(e){return{cpu:0,pvp:0};}}
+function saveHi(m,w){const h=loadHi();if(w>h[m]){h[m]=w;try{localStorage.setItem('ccb-hi',JSON.stringify({date:todayKey(),scores:h}));}catch(e){}}}
+function updateHi(){const h=loadHi();document.getElementById('title-hi').innerHTML=`📅 本日<br>CPU:<b style="color:var(--cyan)">${h.cpu}</b>勝　P2:<b style="color:var(--pink)">${h.pvp}</b>勝`;}
+
+/* ═══════════════════════════════════
+   CARD FACTORY
+═══════════════════════════════════ */
+function rollCard(def){
+  const atk=Math.floor(def.ar[0]+Math.random()*(def.ar[1]-def.ar[0]+1));
+  const hp =Math.floor(def.hr[0]+Math.random()*(def.hr[1]-def.hr[0]+1));
+  return{...def,atk,maxHp:hp,hp,effects:newFx()};
+}
+function randDeck(n=3){return [...DB].sort(()=>Math.random()-.5).slice(0,n).map(rollCard);}
+
+/* ═══════════════════════════════════
+   DRAFT ANIMATION
+═══════════════════════════════════ */
+async function beginDraft(mode){
+  rctx();gameMode=mode;lastMode=mode;
+  document.getElementById('p2-draft-label').textContent=mode==='cpu'?'🤖 CPU':'🔴 PLAYER 2';
+  showScreen('draft-screen');
+  playBGM('bgm-title');
+
+  // Build pool UI
+  const pool=document.getElementById('draft-pool');
+  pool.innerHTML='';
+  DB.forEach((c,i)=>{
+    const el=document.createElement('div');
+    el.className='pool-card';el.id='pc-'+c.id;
+    el.innerHTML=`<span style="font-size:1.5rem">${c.emoji}</span><span class="pc-name">${c.name.replace(' CAT','')}</span>`;
+    pool.appendChild(el);
+  });
+  document.getElementById('p1-picks').innerHTML='';
+  document.getElementById('p2-picks').innerHTML='';
+
+  const p1Cards=[], p2Cards=[];
+
+  // Shuffle 3 times for each player simultaneously
+  for(let pick=0;pick<3;pick++){
+    document.getElementById('draft-status').textContent=`シャッフル中… (${pick+1}/3)`;
+
+    // Get remaining unpicked ids
+    const usedP1=p1Cards.map(c=>c.id);
+    const usedP2=p2Cards.map(c=>c.id);
+    const avail=DB.filter(c=>!usedP1.includes(c.id)&&!usedP2.includes(c.id));
+
+    // Shuffle animation: rapidly highlight random cards for both sides
+    let p1Chosen=null, p2Chosen=null;
+    await shuffleAnim(avail, usedP1, usedP2, (c1,c2)=>{p1Chosen=c1;p2Chosen=c2;});
+
+    // Flash & decide
+    p1Cards.push(rollCard(p1Chosen));
+    p2Cards.push(rollCard(p2Chosen));
+
+    // Mark as picked in pool
+    document.getElementById('pc-'+p1Chosen.id).classList.add('picked-p1');
+    document.getElementById('pc-'+p2Chosen.id).classList.add('picked-p2');
+
+    // Add to result panels
+    addPickCard('p1-picks', p1Chosen, 'p1');
+    addPickCard('p2-picks', p2Chosen, 'p2');
+
+    document.getElementById('draft-status').textContent=`✅ 決定！ (${pick+1}/3)`;
+    beep('pick');
+
+    // Flash screen
+    const df=document.getElementById('decide-flash');
+    df.style.animation='none';void df.offsetWidth;
+    df.className='';
+    df.style.animation='none';void df.offsetWidth;
+    df.style.background='rgba(255,215,0,.3)';
+    df.style.opacity='.6';
+    setTimeout(()=>df.style.opacity='0',300);
+
+    if(pick<2)await delay(900*2);
+  }
+
+  document.getElementById('draft-status').textContent='⚔️ バトル開始！';
+  await delay(800*2);
+
+  // Launch battle with drafted cards
+  startGameWithDecks(p1Cards,p2Cards);
+}
+
+async function shuffleAnim(avail, usedP1, usedP2, onDone){
+  return new Promise(resolve=>{
+    const availForP1=avail;
+    const availForP2=avail;
+    let frame=0;
+    const totalFrames=22;
+    let lastP1=null, lastP2=null;
+    const iv=setInterval(()=>{
+      frame++;
+      // Clear previous highlights
+      document.querySelectorAll('.pool-card').forEach(el=>{
+        el.classList.remove('highlight-p1','highlight-p2');
+      });
+
+      // Pick random for P1 (not already used, not same as P2 this frame)
+      const p1pick=availForP1[Math.floor(Math.random()*availForP1.length)];
+      let p2pick;
+      do{p2pick=availForP2[Math.floor(Math.random()*availForP2.length)];}
+      while(p2pick.id===p1pick.id&&availForP2.length>1);
+
+      lastP1=p1pick; lastP2=p2pick;
+
+      const e1=document.getElementById('pc-'+p1pick.id);
+      const e2=document.getElementById('pc-'+p2pick.id);
+      if(e1)e1.classList.add('highlight-p1');
+      if(e2&&e2!==e1)e2.classList.add('highlight-p2');
+      else if(e2){
+        // same card: pick another for P2
+        const alt=availForP2.filter(c=>c.id!==p1pick.id);
+        if(alt.length>0){
+          const ap=alt[Math.floor(Math.random()*alt.length)];
+          lastP2=ap;
+          const e2b=document.getElementById('pc-'+ap.id);
+          if(e2b)e2b.classList.add('highlight-p2');
+        }
+      }
+
+      if(frame>=totalFrames){
+        clearInterval(iv);
+        onDone(lastP1,lastP2);
+        resolve();
+      }
+    }, 80);
+  });
+}
+
+function addPickCard(containerId, def, side){
+  const wrap=document.getElementById(containerId);
+  const el=document.createElement('div');
+  el.className='dpc';
+  el.innerHTML=`<span style="font-size:1.8rem">${def.emoji}</span><span class="dpc-name">${def.name.replace(' CAT','').replace('MACHINE','').replace('DEALER','')}</span>`;
+  wrap.appendChild(el);
+}
+
+/* ═══════════════════════════════════
+   GAME START
+═══════════════════════════════════ */
+function startGame(mode){beginDraft(mode);}
+
+function startGameWithDecks(d1,d2){
+  p1Deck=d1; p2Deck=d2;
+  turnCount=1; gameRunning=true; autoMode=false; clearTimeout(autoTimer);
+
+  document.getElementById('mode-lbl').textContent=gameMode==='cpu'?'VS CPU':'VS P2';
+  document.getElementById('p2-col-label').textContent=gameMode==='cpu'?'🤖 CPU':'🔴 PLAYER 2';
+  document.getElementById('btn-auto').textContent='▶ 自動';
+  document.getElementById('btn-next').disabled=false;
+
+  showScreen('battle-screen'); playBGM('bgm-battle');
+
+  p1State=p1Deck.shift(); p1State.effects=newFx();
+  p2State=p2Deck.shift(); p2State.effects=newFx();
+
+  renderAll();
+  addLog('y','⚔️ バトル開始！ 3枚のカードで戦え！');
+}
+
+/* ═══════════════════════════════════
+   RENDER
+═══════════════════════════════════ */
+function renderAll(){
+  renderFighter('p1',p1State);
+  renderFighter('p2',p2State);
+  renderBench('p1',p1Deck);
+  renderBench('p2',p2Deck);
+  document.getElementById('turn-disp').textContent=turnCount;
+  document.getElementById('turn-num').textContent=turnCount;
+}
+function renderFighter(s,card){
+  if(!card){
+    ['cn','ct','hp-num','atk','sk','em'].forEach(p=>{ const e=document.getElementById(p+'-'+s); if(e)e.textContent=p==='em'?'💀':'—'; });
+    return;
+  }
+  document.getElementById('cn-'+s).textContent=card.name;
+  document.getElementById('ct-'+s).textContent=`[${card.type}] ${archName(card.arch)}`;
+  document.getElementById('atk-'+s).textContent=effAtk(card);
+  document.getElementById('sk-'+s).textContent='⚡ '+card.sk.name;
+  document.getElementById('em-'+s).textContent=card.emoji;
+  document.getElementById('atype-'+s).textContent=card.type;
+
+  // Image (for future)
+  const art=document.getElementById('art-'+s);
+  let img=art.querySelector('img');
+  if(!img){img=document.createElement('img');img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:4px;';art.appendChild(img);}
+  img.src=`images/${card.id}.png`;
+  const em=document.getElementById('em-'+s);
+  img.onerror=()=>{img.style.display='none';em.style.display='block';};
+  img.onload=()=>{em.style.display='none';img.style.display='block';};
+
+  updateHP(s,card);
+}
+function archName(a){return{atk:'⚔️攻撃',def:'🛡️防御',trk:'🎲トリッキー',bal:'⚖️バランス'}[a]||a;}
+function updateHP(s,card){
+  const pct=Math.max(0,card.hp/card.maxHp*100);
+  const f=document.getElementById('hp-fill-'+s);
+  f.style.width=pct+'%';
+  f.className='hp-fill '+(pct>50?'hp-hi':pct>25?'hp-mi':'hp-lo');
+  document.getElementById('hp-num-'+s).textContent=`${Math.max(0,card.hp)}/${card.maxHp}`;
+}
+function renderBench(s,deck){
+  const wrap=document.getElementById('bench-'+s); wrap.innerHTML='';
+  if(!deck||deck.length===0){const m=document.createElement('div');m.className='bench-mini';m.textContent='—';wrap.appendChild(m);return;}
+  deck.forEach(c=>{const m=document.createElement('div');m.className='bench-mini';m.textContent=c.emoji;wrap.appendChild(m);});
+}
+
+/* ═══════════════════════════════════
+   BATTLE LOGIC
+═══════════════════════════════════ */
+function effAtk(card){
+  let a=card.atk+(card.effects.atkBuff||0);
+  return Math.max(1,a-(card.effects.atkDebuff||0)-(card.effects.atkDebuffPm||0));
+}
+
+async function doNextTurn(){
+  if(!gameRunning||!p1State||!p2State)return;
+  document.getElementById('btn-next').disabled=true;
+  await executeTurn();
+  if(gameRunning)document.getElementById('btn-next').disabled=false;
+}
+
+async function executeTurn(){
+  addLog('y',`── ターン ${turnCount} ──`);
+  await doAttack(p1State,p2State,'p1','p2');
+  if(p2State.hp<=0){await handleKO('p2');return;}
+  await delay(480);
+  await doAttack(p2State,p1State,'p2','p1');
+  if(p1State.hp<=0){await handleKO('p1');return;}
+  tickFx(p1State);tickFx(p2State);
+  turnCount++;renderAll();
+  document.getElementById('log-short').textContent=`ターン${turnCount}へ`;
+}
+
+async function doAttack(atk,def,as,ds){
+  if(!atk.effects.sealed&&Math.random()<atk.sk.prob){await triggerSkill(atk,def,as,ds);return;}
+
+  if(def.effects.dodge){
+    def.effects.dodge=false;
+    addLog('a',`${atk.name} の攻撃を ${def.name} が回避！`);
+    dmgFloat('DODGE!','debuff',ds);return;
+  }
+  let a=effAtk(atk);
+  if(def.effects.shield>0)a=Math.ceil(a/2);
+  const isCrit=Math.random()<.15;
+  const dmg=isCrit?Math.ceil(a*1.8):a;
+  def.hp=Math.max(0,def.hp-dmg);
+  playSE(isCrit?'se-critical':'se-attack');beep(isCrit?'crit':'attack');
+  if(isCrit){
+    addLog('c',`💥 CRITICAL！ ${atk.name} → ${dmg}ダメージ！`);
+    hitFlash();dmgFloat(`💥${dmg}!`,'crit',ds);particles(ds);
+  }else{
+    addLog('a',`${atk.name} が ${def.name} に ${dmg}ダメージ`);
+    dmgFloat(`-${dmg}`,'normal',ds);
+  }
+  document.getElementById('ac-'+as).classList.add('attacking');
+  setTimeout(()=>document.getElementById('ac-'+as).classList.remove('attacking'),260);
+  playSE('se-damage');beep('damage');
+  updateHP(ds,def);await delay(380);
+}
+
+async function triggerSkill(atk,def,as,ds){
+  const sk=atk.sk;
+  await showCutin(atk,sk);
+  playSE('se-skill');beep('skill');
+  addLog('s',`⚡ 【${sk.name}】発動！`);
+  const a=effAtk(atk);
+  switch(sk.eff){
+    case'double_atk':{const d=Math.ceil(a*2);def.hp=Math.max(0,def.hp-d);addLog('s',`  ↳ ${d}ダメージ（×2）`);dmgFloat(`💀${d}!!`,'crit',ds);particles(ds);hitFlash();break;}
+    case'shield':atk.effects.shield=3;addLog('s','  ↳ 3ターン被ダメ半減！');dmgFloat('🛡️GUARD','debuff',as);break;
+    case'atk_debuff':def.effects.atkDebuff=(def.effects.atkDebuff||0)+Math.ceil(a*.5);addLog('s',`  ↳ 相手ATK半減（2ターン）`);dmgFloat('ATK↓↓','debuff',ds);break;
+    case'atk_debuff_pm':def.effects.atkDebuffPm=(def.effects.atkDebuffPm||0)+2;addLog('s','  ↳ 相手ATK永続-2！');dmgFloat('ATK▼','debuff',ds);break;
+    case'drain':{const dr=Math.ceil(def.hp*.15);def.hp=Math.max(0,def.hp-dr);atk.hp=Math.min(atk.maxHp,atk.hp+dr);addLog('s',`  ↳ ${dr}HP吸収！`);dmgFloat(`💰-${dr}`,'crit',ds);dmgFloat(`+${dr}HP`,'heal',as);beep('heal');updateHP(as,atk);break;}
+    case'heal':{const h=8;atk.hp=Math.min(atk.maxHp,atk.hp+h);addLog('s',`  ↳ HP+${h}回復！`);dmgFloat(`+${h}HP`,'heal',as);beep('heal');updateHP(as,atk);break;}
+    case'atk_buff':atk.effects.atkBuff=(atk.effects.atkBuff||0)+3;addLog('s','  ↳ ATK+3（2ターン）');dmgFloat('ATK↑↑','heal',as);break;
+    case'gamble':if(Math.random()<.7){const d=Math.ceil(a*2.5);def.hp=Math.max(0,def.hp-d);addLog('s',`  ↳ 成功！${d}大ダメ！`);dmgFloat(`⚡${d}!!!`,'crit',ds);hitFlash();particles(ds);}else{const d=Math.ceil(a*.8);atk.hp=Math.max(0,atk.hp-d);addLog('s',`  ↳ バグ！自爆${d}ダメ`);dmgFloat(`💥自爆-${d}`,'normal',as);updateHP(as,atk);}break;
+    case'slot':{const d=Math.floor(Math.random()*(a*3+1));def.hp=Math.max(0,def.hp-d);addLog('s',`  ↳ 🎰 ${d}ダメージ！`);dmgFloat(`🎰${d}`,'crit',ds);break;}
+    case'dodge':atk.effects.dodge=true;addLog('s','  ↳ 次の攻撃を回避！');dmgFloat('🌌EVADE','debuff',as);break;
+    case'seal':def.effects.sealed=true;addLog('s',`  ↳ スキル封印！`);dmgFloat('🔮封印','debuff',ds);break;
+    case'multi_hit':{let tot=0;for(let i=0;i<3;i++){const d=Math.max(1,a+Math.floor((Math.random()-.3)*2));def.hp=Math.max(0,def.hp-d);tot+=d;dmgFloat(`-${d}`,'normal',ds);await delay(180);}addLog('s',`  ↳ 3連撃！合計${tot}ダメ！`);hitFlash();particles(ds);break;}
+    case'full_buff':atk.hp=Math.min(atk.maxHp,atk.hp+4);atk.effects.atkBuff=(atk.effects.atkBuff||0)+2;addLog('s','  ↳ HP+4 ATK+2（フルサービス）');dmgFloat('🛎️+HP+ATK','heal',as);beep('heal');updateHP(as,atk);break;
+  }
+  updateHP(ds,def);await delay(280);
+}
+
+function tickFx(c){
+  if(c.effects.shield>0)c.effects.shield--;
+  if(c.effects.atkBuff>0)c.effects.atkBuff--;
+  if(c.effects.atkDebuff>0)c.effects.atkDebuff--;
+  c.effects.sealed=false;
+}
+
+async function handleKO(deadSide){
+  const dead=deadSide==='p1'?p1State:p2State;
+  beep('ko');playSE('se-ko');
+  addLog('k',`💀 ${dead.name} がやられた！`);
+  dmgFloat('K.O.!!','crit',deadSide);hitFlash();
+  await delay(750);
+  const p1m=p1Deck.length>0, p2m=p2Deck.length>0;
+  if(deadSide==='p2'){
+    if(p2m){p2State=p2Deck.shift();p2State.effects=newFx();addLog('y','▶ 次のカードが登場！');renderAll();}
+    else{endGame('p1');return;}
+  }else{
+    if(p1m){p1State=p1Deck.shift();p1State.effects=newFx();addLog('y','▶ 次のカードが登場！');renderAll();}
+    else{endGame('p2');return;}
+  }
+  turnCount++;renderAll();
+}
+
+function endGame(winner){
+  gameRunning=false;autoMode=false;clearTimeout(autoTimer);
+  const isP1=winner==='p1';
+  let ttl,cls;
+  if(gameMode==='cpu'){ttl=isP1?'🏆 YOU WIN!':'💀 GAME OVER';cls=isP1?'rwin':'rlose';}
+  else{ttl=isP1?'🏆 P1 WIN!':'🏆 P2 WIN!';cls='rwin';}
+  document.getElementById('res-title').textContent=ttl;
+  document.getElementById('res-title').className=cls;
+  document.getElementById('res-sub').textContent=`${turnCount}ターン ─ ${gameMode==='cpu'?'VS CPU':'PVP'}`;
+  const rc=document.getElementById('res-cards');rc.innerHTML='';
+  [isP1?p1State:p2State,...(isP1?p1Deck:p2Deck)].filter(Boolean).forEach(c=>{
+    const d=document.createElement('div');d.className='rcard';
+    d.innerHTML=`<div class="rcard-em">${c.emoji}</div><div class="rcard-nm">${c.name}</div><div class="rcard-hp">HP ${Math.max(0,c.hp)}</div>`;
+    rc.appendChild(d);
+  });
+  showScreen('result-screen');
+  playBGM(isP1?'bgm-victory':'bgm-defeat');
+}
+
+/* ═══════════════════════════════════
+   AUTO
+═══════════════════════════════════ */
+function toggleAuto(){
+  autoMode=!autoMode;
+  document.getElementById('btn-auto').textContent=autoMode?'⏸ 停止':'▶ 自動';
+  document.getElementById('btn-next').disabled=autoMode;
+  if(autoMode)runAuto();else clearTimeout(autoTimer);
+}
+async function runAuto(){
+  if(!autoMode||!gameRunning)return;
+  await doNextTurn();
+  if(gameRunning&&autoMode)autoTimer=setTimeout(runAuto,1100);
+}
+
+/* ═══════════════════════════════════
+   CUTIN
+═══════════════════════════════════ */
+function showCutin(card,sk){
+  return new Promise(r=>{
+    const el=document.getElementById('skill-cutin');
+    document.getElementById('cutin-emoji').textContent=sk.ic||card.emoji;
+    document.getElementById('cutin-cname').textContent=card.name;
+    document.getElementById('cutin-sname').textContent=sk.name;
+    document.getElementById('cutin-desc').textContent=sk.desc;
+    el.style.setProperty('--cc',sk.col||'#b57bee');
+    el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
+    setTimeout(r,960*2);
+  });
+}
+
+/* ═══════════════════════════════════
+   VFX
+═══════════════════════════════════ */
+function hitFlash(){const e=document.getElementById('hit-overlay');e.classList.remove('fl');void e.offsetWidth;e.classList.add('fl');}
+function dmgFloat(txt,type,side){
+  const slot=document.getElementById('ac-'+side);if(!slot)return;
+  const r=slot.getBoundingClientRect();
+  const el=document.createElement('div');el.className='dmgf '+type;el.textContent=txt;
+  el.style.left=(r.left+r.width/2-28)+'px';el.style.top=(r.top+16)+'px';
+  document.body.appendChild(el);setTimeout(()=>el.remove(),950);
+}
+function particles(side){
+  const slot=document.getElementById('ac-'+side);if(!slot)return;
+  const r=slot.getBoundingClientRect();const cx=r.left+r.width/2,cy=r.top+r.height/2;
+  const cols=['#FFD700','#ff3a3a','#00e5ff','#39ff14','#b57bee'];
+  for(let i=0;i<8;i++){
+    const el=document.createElement('div');el.className='prt';
+    const ang=Math.random()*Math.PI*2,dist=35+Math.random()*55;
+    el.style.cssText=`left:${cx}px;top:${cy}px;background:${cols[i%5]};--tx:${Math.cos(ang)*dist}px;--ty:${Math.sin(ang)*dist-35}px;--dur:${.38+Math.random()*.35}s;`;
+    document.body.appendChild(el);setTimeout(()=>el.remove(),800);
+  }
+}
+
+/* ═══════════════════════════════════
+   LOG
+═══════════════════════════════════ */
+function addLog(type,msg){
+  const p=document.getElementById('battle-log');
+  const e=document.createElement('div');e.className='le l'+type;e.textContent=msg;
+  p.appendChild(e);p.scrollTop=p.scrollHeight;
+  document.getElementById('log-short').textContent=msg;
+}
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ═══════════════════════════════════
+   INIT
+═══════════════════════════════════ */
+showScreen('title-screen');
+playBGM('bgm-title');
+updateHi();
+</script>
+</body>
+</html>

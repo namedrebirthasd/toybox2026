@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ヤキュウ THE LIKE GAME</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Boogaloo&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'Kosugi Maru',sans-serif;
+  background:#1a1a2e;
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  overflow:hidden;user-select:none;
+}
+.screen{width:100%;max-width:400px;text-align:center;}
+.hidden{display:none!important;}
+
+/* TITLE */
+#title-screen{padding:32px 20px;}
+#title-screen h1{font-family:'Boogaloo',cursive;font-size:3.5rem;color:#FFD700;text-shadow:0 0 20px rgba(255,215,0,.5),3px 3px 0 #8B4513;margin-bottom:6px;}
+#title-screen .sub{font-size:1rem;color:rgba(255,255,255,.6);margin-bottom:28px;}
+.title-ball{font-size:4rem;margin-bottom:12px;animation:bounce 1.5s ease-in-out infinite;}
+@keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
+.sbtn{display:block;width:80%;margin:10px auto;padding:15px;font-size:1.4rem;font-family:'Kosugi Maru',sans-serif;border:none;border-radius:50px;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.4);}
+.sbtn:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.4);}
+.sbtn-normal{background:linear-gradient(135deg,#43a047,#1b5e20);color:white;}
+.sbtn-hard  {background:linear-gradient(135deg,#e53935,#b71c1c);color:white;}
+#title-hi{font-size:.9rem;color:rgba(255,255,255,.5);margin-top:14px;line-height:1.8;}
+
+/* GAME */
+#game-screen{padding:0;max-width:400px;width:100%;}
+#hud{display:flex;gap:8px;justify-content:center;align-items:center;padding:8px;background:rgba(0,0,0,.5);}
+.hbox{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:4px 14px;font-size:.95rem;color:white;}
+.hbox b{font-size:1.3rem;color:#FFD700;}
+#ball-dots{display:flex;gap:6px;align-items:center;}
+.bdot{width:14px;height:14px;border-radius:50%;background:#ddd;box-shadow:0 2px 4px rgba(0,0,0,.3);}
+.bdot.used{background:#444;box-shadow:none;}
+
+/* CANVAS WRAP */
+#canvas-wrap{
+  position:relative;
+  width:100%;
+  background:linear-gradient(180deg,#0a1628 0%,#0d3b1e 40%,#0a2e17 100%);
+  overflow:hidden;
+}
+canvas{display:block;width:100%;height:100%;}
+
+/* PITCHER */
+#pitcher-box{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  text-align:center;pointer-events:none;z-index:5;
+}
+#pitcher-emoji{font-size:2.8rem;display:block;transition:transform .15s;}
+#pitch-name{font-size:.7rem;color:rgba(255,255,255,.7);background:rgba(0,0,0,.5);border-radius:8px;padding:2px 8px;display:inline-block;margin-top:2px;}
+
+/* TAP AREA */
+#tap-area{
+  width:100%;padding:12px 0 10px;
+  background:rgba(0,0,0,.6);border-top:2px solid rgba(255,255,255,.1);
+  text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+#bat-icon{font-size:2rem;display:inline-block;transition:transform .1s;}
+#tap-area.swinging #bat-icon{animation:batSwing .25s ease-out;}
+@keyframes batSwing{0%{transform:rotate(0);}40%{transform:rotate(-40deg) scale(1.2);}100%{transform:rotate(0);}}
+#tap-hint{font-size:.75rem;color:rgba(255,255,255,.45);margin-top:2px;}
+
+/* OVERLAYS */
+#countdown-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:50;align-items:center;justify-content:center;}
+#countdown-overlay.show{display:flex;}
+#cdn{font-family:'Boogaloo',cursive;font-size:10rem;color:white;text-shadow:4px 4px 0 rgba(0,0,0,.4);animation:pop .4s ease-out;}
+@keyframes pop{0%{transform:scale(.2);opacity:0;}70%{transform:scale(1.2);}100%{transform:scale(1);opacity:1;}}
+#hit-flash{display:none;position:fixed;inset:0;z-index:100;pointer-events:none;}
+#hit-flash.on{display:block;animation:hfa .3s ease-out forwards;}
+@keyframes hfa{0%{background:rgba(255,255,200,.8);}100%{background:transparent;}}
+
+/* RESULT */
+#result-screen{padding:24px 20px;}
+#result-screen h2{font-family:'Boogaloo',cursive;font-size:3rem;color:#FFD700;text-shadow:3px 3px 0 #8B4513;margin-bottom:16px;}
+.rbox{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:12px 20px;margin:8px auto;max-width:260px;color:white;}
+.rbox b{font-size:2.8rem;color:#FFD700;display:block;}
+#result-msg{font-size:1.5rem;color:white;margin:10px 0;text-shadow:2px 2px 0 rgba(0,0,0,.4);}
+#new-rec{display:none;font-size:1.3rem;color:#FFD700;font-weight:bold;margin-bottom:10px;}
+.res-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px;}
+
+#bgm-btn{position:fixed;top:10px;right:10px;z-index:300;background:rgba(255,255,255,.15);border:none;border-radius:50%;width:42px;height:42px;font-size:1.2rem;cursor:pointer;color:white;}
+</style>
+</head>
+<body>
+<button id="bgm-btn" onclick="toggleBGM()">🎵</button>
+<div id="countdown-overlay"><div id="cdn">3</div></div>
+<div id="hit-flash"></div>
+
+<!-- TITLE -->
+<div id="title-screen" class="screen">
+  <div class="title-ball">⚾</div>
+  <h1>ヤキュウ THE LIKE GAME</h1>
+  <div class="sub">ゾーンに入ったらタップ！</div>
+  <button class="sbtn sbtn-normal" onclick="startGame('normal')">⚾ ふつう</button>
+  <button class="sbtn sbtn-hard"   onclick="startGame('hard')">🔥 むずかしい</button>
+  <div id="title-hi"></div>
+</div>
+
+<!-- GAME -->
+<div id="game-screen" class="screen hidden">
+  <div id="hud">
+    <div class="hbox">🏆 <b id="score-disp">0</b>点</div>
+    <div id="ball-dots"></div>
+    <div class="hbox">🎯 <b id="hits-disp">0</b>打</div>
+  </div>
+  <div id="canvas-wrap">
+    <div id="pitcher-box">
+      <span id="pitcher-emoji">🤾</span>
+      <div id="pitch-name">じゅんびちゅう</div>
+    </div>
+    <canvas id="gc"></canvas>
+  </div>
+  <div id="tap-area">
+    <div id="bat-icon">🏏</div>
+    <div id="tap-hint">タップでバット！</div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="result-screen" class="screen hidden">
+  <h2>ゲームセット！</h2>
+  <div id="new-rec">🎊 ニューレコード！</div>
+  <div class="rbox">スコア<b id="r-score">0</b>点</div>
+  <div class="rbox">ヒット<b id="r-hits">0</b>回 / <span id="r-total">0</span>球</div>
+  <div class="rbox">本日ベスト<b id="r-hi">0</b>点</div>
+  <div id="result-msg"></div>
+  <div class="res-btns">
+    <button class="sbtn sbtn-normal" style="width:auto;padding:12px 24px;font-size:1.2rem;" onclick="goTitle()">🏠 タイトル</button>
+    <button class="sbtn sbtn-hard"   style="width:auto;padding:12px 24px;font-size:1.2rem;background:linear-gradient(135deg,#43a047,#1b5e20);" onclick="replayGame()">🔄 もう一かい</button>
+  </div>
+</div>
+
+<audio id="bgm-title" src="sounds/bgm_001.mp3" loop></audio>
+<audio id="bgm-game"  src="sounds/bgm_002.mp3" loop></audio>
+<audio id="se-result" src="sounds/se_002.mp3"></audio>
+
+<script>
+// ============================================================
+// 定数・設定
+// ============================================================
+const CFGS = {
+  normal: { balls:10, pitches:['straight','curve-l','curve-r','slow'], windUp:1000, nextDelay:1300 },
+  hard:   { balls:12, pitches:['straight','curve-l','curve-r','slow','speed'], windUp:700, nextDelay:1000 },
+};
+
+// ボールの速さ (フレームあたりpx、canvas高さに対する比率で後計算)
+const BALL_SPD = { straight:0.022, 'curve-l':0.020, 'curve-r':0.020, slow:0.013, speed:0.036 };
+
+// 穴の定義 [cx比率, cy比率, 半径比率, 点数, 色]
+const HOLES = [
+  [.50, .16, .075, 5, '#FFD700'],
+  [.25, .27, .060, 3, '#e53935'],
+  [.75, .27, .060, 3, '#e53935'],
+  [.12, .38, .048, 1, '#1565C0'],
+  [.88, .38, .048, 1, '#1565C0'],
+  [.38, .35, .052, 2, '#2e7d32'],
+  [.62, .35, .052, 2, '#2e7d32'],
+];
+
+// ストライクゾーン (canvas高さの比率)
+const ZONE_TOP_R  = 0.76;
+const ZONE_BOT_R  = 0.88;
+const ZONE_W_R    = 0.44; // 幅の比率
+
+// ============================================================
+// 状態
+// ============================================================
+let cfg, mode;
+let score=0, hits=0, thrown=0;
+let gameActive=false;
+let bgmEnabled=true;
+
+// ボール状態
+let ball = null;
+/*
+ball = {
+  x, y,          現在座標 (px)
+  vx, vy,        速度 (px/frame)
+  type,          pitch type
+  phase,         'fly' | 'hit' | 'done'
+  // カーブ専用
+  curveKinkDone, // クの字が曲がったか
+  kinkY,         // 何Yで曲がるか
+  targetX,       // ストライクゾーン中央X
+  // ヒット後
+  targetHole,    // 向かう穴のindex
+}
+*/
+
+let swingDone=false;    // この球でスイング済み
+let animId=null;
+let pitchTimer=null;
+
+// Canvas
+const gc   = document.getElementById('gc');
+const ctx  = gc.getContext('2d');
+let CW=0, CH=0;         // canvas px寸法
+
+// ============================================================
+// ユーティリティ
+// ============================================================
+function showScreen(name){
+  ['title','game','result'].forEach(n=>{
+    document.getElementById(n+'-screen').classList.toggle('hidden', n!==name);
+  });
+}
+
+function todayKey(){const d=new Date();return`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;}
+function loadHi(){
+  try{const r=JSON.parse(localStorage.getItem('sball-hi')||'{}');
+    if(r.date!==todayKey())return{normal:0,hard:0};return r.scores||{normal:0,hard:0};}
+  catch(e){return{normal:0,hard:0};}
+}
+function saveHi(m,s){
+  if(s<=0)return false;const h=loadHi();
+  if(s>h[m]){h[m]=s;try{localStorage.setItem('sball-hi',JSON.stringify({date:todayKey(),scores:h}));}catch(e){}return true;}
+  return false;
+}
+
+// ============================================================
+// Audio
+// ============================================================
+const bgmTitle=document.getElementById('bgm-title');
+const bgmGame =document.getElementById('bgm-game');
+const seResult=document.getElementById('se-result');
+const actx=new(window.AudioContext||window.webkitAudioContext)();
+function rctx(){if(actx.state==='suspended')actx.resume();}
+bgmTitle.play().catch(()=>{});
+document.addEventListener('pointerdown',function f(){rctx();if(bgmEnabled)bgmTitle.play().catch(()=>{});document.removeEventListener('pointerdown',f);},{once:true});
+function toggleBGM(){
+  rctx();bgmEnabled=!bgmEnabled;
+  document.getElementById('bgm-btn').textContent=bgmEnabled?'🎵':'🔇';
+  if(!bgmEnabled){bgmTitle.pause();bgmGame.pause();}
+  else if(gameActive)bgmGame.play().catch(()=>{});else bgmTitle.play().catch(()=>{});
+}
+function beep(type){
+  try{
+    const o=actx.createOscillator(),g=actx.createGain();
+    o.connect(g);g.connect(actx.destination);
+    const t=actx.currentTime;
+    ({
+      hit: ()=>{o.frequency.setValueAtTime(550,t);o.frequency.exponentialRampToValueAtTime(220,t+.18);g.gain.setValueAtTime(.5,t);g.gain.exponentialRampToValueAtTime(.001,t+.22);o.start();o.stop(t+.22);},
+      miss:()=>{o.type='sawtooth';o.frequency.value=180;g.gain.setValueAtTime(.3,t);g.gain.exponentialRampToValueAtTime(.001,t+.15);o.start();o.stop(t+.15);},
+      hole:()=>{[0,.12,.24].forEach((d,i)=>{const o2=actx.createOscillator(),g2=actx.createGain();o2.connect(g2);g2.connect(actx.destination);o2.frequency.value=[523,659,784][i];g2.gain.setValueAtTime(.35,t+d);g2.gain.exponentialRampToValueAtTime(.001,t+d+.25);o2.start(t+d);o2.stop(t+d+.25);});},
+      count:()=>{o.frequency.value=440;g.gain.setValueAtTime(.25,t);g.gain.exponentialRampToValueAtTime(.001,t+.2);o.start();o.stop(t+.2);},
+      start:()=>{o.frequency.value=880;g.gain.setValueAtTime(.3,t);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.start();o.stop(t+.3);},
+    })[type]?.();
+  }catch(e){}
+}
+
+// ============================================================
+// Canvas セットアップ
+// ============================================================
+function resizeCanvas(){
+  const wrap=document.getElementById('canvas-wrap');
+  CW=wrap.clientWidth;
+  CH=Math.round(CW*1.4);
+  gc.width=CW; gc.height=CH;
+  wrap.style.height=CH+'px';
+}
+
+// ============================================================
+// ゲーム開始
+// ============================================================
+function startGame(diff){
+  rctx();
+  mode=diff; cfg=CFGS[diff];
+  score=0; hits=0; thrown=0;
+  ball=null; swingDone=false;
+  gameActive=true;
+  bgmTitle.pause();bgmTitle.currentTime=0;
+  showScreen('game');
+  resizeCanvas();
+  updateHUD();
+  buildDots();
+  if(bgmEnabled)bgmGame.play().catch(()=>{});
+  doCountdown(()=>nextPitch());
+}
+
+function buildDots(){
+  const wrap=document.getElementById('ball-dots');wrap.innerHTML='';
+  for(let i=0;i<cfg.balls;i++){
+    const d=document.createElement('div');d.className='bdot';d.id='bd'+i;wrap.appendChild(d);
+  }
+}
+function useDot(i){const d=document.getElementById('bd'+i);if(d)d.classList.add('used');}
+function updateHUD(){
+  document.getElementById('score-disp').textContent=score;
+  document.getElementById('hits-disp').textContent=hits;
+}
+
+// ============================================================
+// カウントダウン
+// ============================================================
+function doCountdown(cb){
+  const ov=document.getElementById('countdown-overlay');
+  const el=document.getElementById('cdn');
+  ov.classList.add('show'); let n=3;
+  function flash(txt,s){el.textContent=txt;el.style.animation='none';void el.offsetWidth;el.style.animation='pop .4s ease-out';beep(s?'start':'count');}
+  flash(n);
+  const iv=setInterval(()=>{n--;if(n>0)flash(n);else{flash('プレイ！',true);clearInterval(iv);setTimeout(()=>{ov.classList.remove('show');cb();},700);}},1000);
+}
+
+// ============================================================
+// 投球
+// ============================================================
+const PITCH_NAMES={'straight':'ストレート','curve-l':'カーブ↙','curve-r':'カーブ↘','slow':'チェンジアップ','speed':'スピード！'};
+const PITCH_ICONS={'straight':'⚾','curve-l':'🌀','curve-r':'🌀','slow':'🐢','speed':'🔥'};
+
+function nextPitch(){
+  if(!gameActive)return;
+  if(thrown>=cfg.balls){endGame();return;}
+  ball=null; swingDone=false;
+  document.getElementById('pitcher-emoji').style.transform='';
+
+  // ランダム球種
+  const type=cfg.pitches[Math.floor(Math.random()*cfg.pitches.length)];
+  document.getElementById('pitcher-emoji').textContent=PITCH_ICONS[type];
+  document.getElementById('pitch-name').textContent=PITCH_NAMES[type];
+
+  // ループ開始(描画だけ)
+  if(!animId) animId=requestAnimationFrame(loop);
+
+  // ワインドアップ → 投球
+  pitchTimer=setTimeout(()=>{
+    if(!gameActive)return;
+    const pe=document.getElementById('pitcher-emoji');
+    pe.style.transform='scale(1.4)';
+    setTimeout(()=>pe.style.transform='',200);
+    thrown++; useDot(thrown-1);
+    createBall(type);
+  }, cfg.windUp);
+}
+
+// ボール生成
+function createBall(type){
+  const spd = BALL_SPD[type] * CH;
+  const zoneX = CW/2;                        // ストライクゾーン中心X（常に中央）
+  const pitcherY = 80;                        // ピッチャーY
+  const kinkY = CH * 0.42;                    // カーブの曲がりポイント
+
+  let startX, vx, vy;
+
+  if(type==='curve-l'){
+    // 右上から飛んでくる→曲がりポイントで中央へ折れる
+    startX = CW * 0.72;
+    // フェーズ1の速度: kinkYに到達するまでに中央付近に来るよう計算
+    // Y距離: kinkY - pitcherY、その間に横移動: startX→zoneX+少し右
+    const dy1 = kinkY - pitcherY;
+    const frames1 = dy1 / spd;
+    vx = (zoneX + CW*0.05 - startX) / frames1; // 少し行き過ぎる
+    vy = spd;
+  } else if(type==='curve-r'){
+    // 左上から→中央へ折れる
+    startX = CW * 0.28;
+    const dy1 = kinkY - pitcherY;
+    const frames1 = dy1 / spd;
+    vx = (zoneX - CW*0.05 - startX) / frames1;
+    vy = spd;
+  } else {
+    // ストレート系: 中央付近±ランダム
+    startX = zoneX + (Math.random()-0.5)*CW*0.22;
+    vx = 0;
+    vy = spd;
+  }
+
+  ball = {
+    x: startX,
+    y: pitcherY,
+    vx, vy,
+    type,
+    phase: 'fly',
+    curveKinkDone: false,
+    kinkY,
+    targetHole: -1,
+  };
+}
+
+// ============================================================
+// スイング
+// ============================================================
+document.getElementById('tap-area').addEventListener('pointerdown', e=>{
+  e.preventDefault(); rctx();
+  if(!gameActive||swingDone||!ball||ball.phase!=='fly') return;
+  swingDone=true;
+
+  // スイングアニメ
+  const ta=document.getElementById('tap-area');
+  ta.classList.add('swinging');
+  setTimeout(()=>ta.classList.remove('swinging'),300);
+  beep('hit');
+
+  // ゾーン判定
+  const zTop=CH*ZONE_TOP_R, zBot=CH*ZONE_BOT_R;
+  const inZone = ball.y>=zTop && ball.y<=zBot;
+
+  if(inZone){
+    hits++; updateHUD();
+    const fl=document.getElementById('hit-flash');
+    fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');
+    // 穴へ飛ばす
+    ball.phase='hit';
+    ball.targetHole=pickHole(ball.x);
+    const h=HOLES[ball.targetHole];
+    const tx=h[0]*CW, ty=h[1]*CH;
+    const dx=tx-ball.x, dy=ty-ball.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const hitSpd=CH*0.030;
+    ball.vx=dx/dist*hitSpd;
+    ball.vy=dy/dist*hitSpd;
+  } else {
+    showEffect('miss', CW/2, CH*ZONE_BOT_R-20);
+    setTimeout(()=>afterBall(), 700);
+  }
+});
+
+function pickHole(bx){
+  // ボールのX座標に近い穴ほど選ばれやすい（重み付きランダム）
+  const w=HOLES.map(h=>{const hx=h[0]*CW;return Math.max(2,120-Math.abs(hx-bx));});
+  const total=w.reduce((a,b)=>a+b,0);
+  let r=Math.random()*total;
+  for(let i=0;i<w.length;i++){r-=w[i];if(r<=0)return i;}
+  return 0;
+}
+
+function afterBall(){
+  if(!gameActive)return;
+  ball=null;swingDone=false;
+  if(thrown>=cfg.balls){endGame();return;}
+  setTimeout(()=>nextPitch(), cfg.nextDelay);
+}
+
+// ============================================================
+// メインループ
+// ============================================================
+function loop(){
+  if(!gameActive){animId=null;return;}
+  update();
+  draw();
+  animId=requestAnimationFrame(loop);
+}
+
+function update(){
+  if(!ball)return;
+
+  if(ball.phase==='fly'){
+    // カーブのクの字曲がり
+    if((ball.type==='curve-l'||ball.type==='curve-r')&&!ball.curveKinkDone){
+      if(ball.y>=ball.kinkY){
+        ball.curveKinkDone=true;
+        // 横速度をゼロにして縦だけに（急転換）
+        ball.vx=0;
+      }
+    }
+    ball.x+=ball.vx;
+    ball.y+=ball.vy;
+
+    // ゾーンを通過してしまったらスイングなしミス
+    if(ball.y>CH*ZONE_BOT_R+30 && !swingDone){
+      showEffect('miss', ball.x, CH*ZONE_BOT_R);
+      ball.phase='done';
+      setTimeout(()=>afterBall(), 700);
+    }
+  } else if(ball.phase==='hit'){
+    ball.x+=ball.vx;
+    ball.y+=ball.vy;
+    // 穴に到達したか
+    const h=HOLES[ball.targetHole];
+    const hx=h[0]*CW, hy=h[1]*CH, hr=h[2]*Math.min(CW,CH);
+    const dist=Math.sqrt((ball.x-hx)**2+(ball.y-hy)**2);
+    if(dist<hr){
+      ball.phase='done';
+      score+=h[3]; updateHUD();
+      flashHole(ball.targetHole);
+      showEffect('score', hx, hy, h[3], h[4]);
+      if(h[3]>=5)beep('hole');else beep('hit');
+      setTimeout(()=>afterBall(), 900);
+    }
+    // 画面外
+    if(ball.x<-30||ball.x>CW+30||ball.y<-30){
+      ball.phase='done';
+      setTimeout(()=>afterBall(), 300);
+    }
+  }
+}
+
+// ============================================================
+// 描画
+// ============================================================
+// 穴のフラッシュ状態
+const holeFlash={};
+function flashHole(i){holeFlash[i]=(Date.now()+400);}
+
+function draw(){
+  ctx.clearRect(0,0,CW,CH);
+
+  // フィールドライン（薄く）
+  ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=1;
+  for(let x=0;x<CW;x+=55){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke();}
+
+  // ストライクゾーン
+  const zTop=CH*ZONE_TOP_R, zH=CH*(ZONE_BOT_R-ZONE_TOP_R);
+  const zW=CW*ZONE_W_R, zLeft=(CW-zW)/2;
+
+  // ゾーン枠
+  ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+  ctx.strokeRect(zLeft, zTop, zW, zH);
+  ctx.setLineDash([]);
+
+  // ゾーン内にボールがあれば光らせる
+  const inZone=ball&&ball.phase==='fly'&&ball.y>=zTop&&ball.y<=zTop+zH;
+  if(inZone){
+    ctx.fillStyle='rgba(255,230,0,.12)';
+    ctx.fillRect(zLeft,zTop,zW,zH);
+    ctx.strokeStyle='rgba(255,230,0,.7)';ctx.lineWidth=2;
+    ctx.strokeRect(zLeft,zTop,zW,zH);
+  }
+
+  // 穴
+  const now=Date.now();
+  HOLES.forEach(([cx,cy,cr,pts,col],i)=>{
+    const hx=cx*CW, hy=cy*CH, hr=cr*Math.min(CW,CH);
+    const lit=holeFlash[i]&&now<holeFlash[i];
+    // 穴背景
+    const g=ctx.createRadialGradient(hx,hy,1,hx,hy,hr);
+    g.addColorStop(0,lit?'rgba(255,255,255,.4)':'rgba(255,255,255,.08)');
+    g.addColorStop(1,'rgba(0,0,0,.75)');
+    ctx.fillStyle=g;
+    ctx.beginPath();ctx.arc(hx,hy,hr,0,Math.PI*2);ctx.fill();
+    // 枠
+    ctx.strokeStyle=lit?'white':col;
+    ctx.lineWidth=lit?3:2;
+    if(lit){ctx.shadowColor=col;ctx.shadowBlur=15;}
+    ctx.stroke();ctx.shadowBlur=0;
+    // ラベル
+    ctx.fillStyle=lit?'white':col;
+    ctx.font=`bold ${Math.round(hr*.65)}px Kosugi Maru`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(pts+'点',hx,hy);
+  });
+
+  // ボール
+  if(ball){
+    const bx=ball.x, by=ball.y, br=Math.min(CW,CH)*0.034;
+    // 影
+    ctx.save();ctx.globalAlpha=.2;
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.ellipse(bx,by+br*1.2,br*1.1,br*.4,0,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    // ボール本体
+    const ballColors={
+      straight:['#ffffff','#bbbbbb'],
+      'curve-l':['#fff59d','#f57f17'],
+      'curve-r':['#fff59d','#f57f17'],
+      slow:     ['#80deea','#006064'],
+      speed:    ['#ff5252','#7f0000'],
+    }[ball.type]||['#fff','#aaa'];
+    const gr=ctx.createRadialGradient(bx-br*.35,by-br*.35,br*.05,bx,by,br);
+    gr.addColorStop(0,ballColors[0]);gr.addColorStop(1,ballColors[1]);
+    ctx.fillStyle=gr;
+    ctx.beginPath();ctx.arc(bx,by,br,0,Math.PI*2);ctx.fill();
+    // 縫い目
+    ctx.strokeStyle='rgba(180,0,0,.5)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(bx-br*.25,by,br*.55,-0.5,0.5);ctx.stroke();
+    ctx.beginPath();ctx.arc(bx+br*.25,by,br*.55,Math.PI-.5,Math.PI+.5);ctx.stroke();
+    // スピード残像
+    if(ball.type==='speed'){
+      for(let i=1;i<=3;i++){
+        ctx.globalAlpha=.12/i;ctx.fillStyle='#ff5252';
+        ctx.beginPath();ctx.arc(bx-ball.vx*i*.6,by-ball.vy*i*.6,br*(1-i*.18),0,Math.PI*2);ctx.fill();
+      }
+      ctx.globalAlpha=1;
+    }
+    // カーブ軌跡ドット
+    if((ball.type==='curve-l'||ball.type==='curve-r')&&!ball.curveKinkDone&&!swingDone){
+      ctx.fillStyle='rgba(255,230,100,.3)';
+      for(let i=1;i<=3;i++){
+        ctx.beginPath();ctx.arc(bx-ball.vx*i*1.5,by-ball.vy*i*1.5,br*(1-i*.25),0,Math.PI*2);ctx.fill();
+      }
+    }
+  }
+}
+
+// ============================================================
+// エフェクト
+// ============================================================
+function showEffect(type, x, y, pts, col){
+  const wrap=document.getElementById('canvas-wrap');
+  const el=document.createElement('div');
+  el.style.cssText=`position:absolute;left:${x-50}px;top:${y-20}px;z-index:20;pointer-events:none;font-weight:bold;font-family:'Boogaloo',cursive;text-shadow:2px 2px 0 rgba(0,0,0,.6);animation:pop .9s ease-out forwards;`;
+  if(type==='score'){
+    const labels={1:'1点！',2:'2点！',3:'3点！！',5:'🏆5点！！！'};
+    el.textContent=labels[pts]||pts+'点！';
+    el.style.fontSize=pts>=5?'2.5rem':'2rem';
+    el.style.color=col||'#FFD700';
+  } else {
+    el.textContent=['スカ！','ミス！','おしい！','あ〜！'][Math.floor(Math.random()*4)];
+    el.style.fontSize='1.8rem';el.style.color='#ef5350';
+  }
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(),950);
+}
+
+// ============================================================
+// ゲーム終了
+// ============================================================
+function endGame(){
+  gameActive=false;
+  if(animId){cancelAnimationFrame(animId);animId=null;}
+  clearTimeout(pitchTimer);
+  bgmGame.pause();bgmGame.currentTime=0;
+  const isNew=saveHi(mode,score);
+  const hi=loadHi();
+  document.getElementById('r-score').textContent=score;
+  document.getElementById('r-hits').textContent=hits;
+  document.getElementById('r-total').textContent=cfg.balls;
+  document.getElementById('r-hi').textContent=hi[mode];
+  document.getElementById('new-rec').style.display=isNew?'block':'none';
+  const rate=hits/cfg.balls;
+  document.getElementById('result-msg').textContent=
+    score>=80?'🏆 伝説のバッター！！':score>=50?'🎖 すごい！':score>=30?'😊 なかなか！':rate>.5?'👍 ヒット多い！':'⚾ 次はいける！';
+  showScreen('result');
+  setTimeout(()=>{if(bgmEnabled){seResult.play().catch(()=>{});setTimeout(()=>bgmTitle.play().catch(()=>{}),1500);}},300);
+}
+
+function goTitle(){
+  gameActive=false;
+  if(animId){cancelAnimationFrame(animId);animId=null;}
+  clearTimeout(pitchTimer);
+  bgmGame.pause();bgmGame.currentTime=0;
+  const hi=loadHi();
+  document.getElementById('title-hi').innerHTML=`📅 本日ベスト<br>ふつう:<b style="color:#FFD700">${hi.normal}</b>　むずかしい:<b style="color:#FF5252">${hi.hard}</b>`;
+  showScreen('title');
+  if(bgmEnabled)bgmTitle.play().catch(()=>{});
+}
+function replayGame(){goTitle();setTimeout(()=>startGame(mode),50);}
+</script>
+</body>
+</html>

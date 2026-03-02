@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>もぐら叩きゲーム</title>
+<style>
+    body {
+        text-align: center;
+        font-family: sans-serif;
+        background: #f0f8ff;
+    }
+    h1 {
+        margin-top: 20px;
+    }
+    #score {
+        font-size: 24px;
+        margin: 10px;
+    }
+    #game {
+        display: grid;
+        grid-template-columns: repeat(3, 120px);
+        grid-gap: 15px;
+        justify-content: center;
+        margin-top: 20px;
+    }
+    .hole {
+        width: 120px;
+        height: 120px;
+        background: #8b4513;
+        border-radius: 50%;
+        position: relative;
+        cursor: pointer;
+    }
+    .mole {
+        width: 80px;
+        height: 80px;
+        background: brown;
+        border-radius: 50%;
+        position: absolute;
+        top: 20px;
+        left: 20px;
+    }
+    #startBtn {
+        padding: 10px 20px;
+        font-size: 18px;
+        margin-top: 10px;
+    }
+</style>
+</head>
+<body>
+
+<h1>🐹 もぐら叩きゲーム</h1>
+<div id="score">スコア: 0</div>
+<button id="startBtn">スタート</button>
+
+<div id="game"></div>
+
+<script>
+const game = document.getElementById("game");
+const scoreDisplay = document.getElementById("score");
+const startBtn = document.getElementById("startBtn");
+
+let score = 0;
+let currentMole = null;
+let gameInterval = null;
+
+function createBoard() {
+    game.innerHTML = "";
+    for (let i = 0; i < 9; i++) {
+        const hole = document.createElement("div");
+        hole.classList.add("hole");
+        hole.dataset.index = i;
+        hole.addEventListener("click", hitMole);
+        game.appendChild(hole);
+    }
+}
+
+function randomMole() {
+    const holes = document.querySelectorAll(".hole");
+    holes.forEach(hole => hole.innerHTML = "");
+
+    const randomIndex = Math.floor(Math.random() * holes.length);
+    const mole = document.createElement("div");
+    mole.classList.add("mole");
+    holes[randomIndex].appendChild(mole);
+    currentMole = randomIndex;
+}
+
+function hitMole(e) {
+    if (e.currentTarget.dataset.index == currentMole) {
+        score++;
+        scoreDisplay.textContent = "スコア: " + score;
+        currentMole = null;
+        e.currentTarget.innerHTML = "";
+    }
+}
+
+function startGame() {
+    score = 0;
+    scoreDisplay.textContent = "スコア: 0";
+    createBoard();
+    randomMole();
+
+    if (gameInterval) clearInterval(gameInterval);
+    gameInterval = setInterval(randomMole, 800);
+
+    setTimeout(() => {
+        clearInterval(gameInterval);
+        alert("ゲーム終了！あなたのスコアは " + score + " 点です！");
+    }, 15000);
+}
+
+startBtn.addEventListener("click", startGame);
+
+createBoard();
+</script>
+
+</body>
+</html>

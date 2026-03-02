@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>CAT CARD BATTLE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Boogaloo&family=Kosugi+Maru&display=swap');
+
+:root{
+  --bg:       #0a0a0f;
+  --bg2:      #12121a;
+  --panel:    #1a1a28;
+  --border:   #2a2a40;
+  --gold:     #FFD700;
+  --gold2:    #FFA500;
+  --red:      #ff3a3a;
+  --cyan:     #00e5ff;
+  --purple:   #b57bee;
+  --green:    #39ff14;
+  --pink:     #ff4dbb;
+  --text:     #e8e8f0;
+  --text2:    rgba(232,232,240,.55);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'Kosugi Maru',sans-serif;
+  background:var(--bg);
+  min-height:100vh;
+  overflow:hidden;
+  color:var(--text);
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ── NOISE OVERLAY ── */
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:9999;opacity:.4;
+}
+
+/* ── SCREENS ── */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .4s;}
+.screen.hidden{opacity:0;pointer-events:none;}
+
+/* ════════════════════════════
+   TITLE
+════════════════════════════ */
+#title-screen{
+  background:radial-gradient(ellipse at 50% 30%, #1a0a30 0%, #0a0a0f 65%);
+}
+.title-glow{
+  font-family:'Boogaloo',cursive;
+  font-size:clamp(2.8rem,8vw,5rem);
+  color:var(--gold);
+  text-shadow:0 0 30px rgba(255,215,0,.7),0 0 60px rgba(255,165,0,.4),4px 4px 0 #4a2a00;
+  letter-spacing:4px;
+  margin-bottom:6px;
+  animation:titlePulse 3s ease-in-out infinite;
+}
+@keyframes titlePulse{0%,100%{text-shadow:0 0 30px rgba(255,215,0,.7),0 0 60px rgba(255,165,0,.4),4px 4px 0 #4a2a00;}50%{text-shadow:0 0 50px rgba(255,215,0,1),0 0 100px rgba(255,165,0,.7),4px 4px 0 #4a2a00;}}
+.title-sub{font-size:1rem;color:var(--text2);letter-spacing:6px;margin-bottom:40px;}
+.title-cats{font-size:3rem;margin-bottom:30px;animation:floatCats 2s ease-in-out infinite;}
+@keyframes floatCats{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+
+.menu-btn{
+  display:block;width:280px;margin:10px auto;
+  padding:16px 0;text-align:center;
+  font-family:'Boogaloo',cursive;font-size:1.6rem;letter-spacing:2px;
+  border:2px solid;border-radius:4px;cursor:pointer;
+  background:transparent;
+  position:relative;overflow:hidden;
+  transition:transform .1s,box-shadow .15s;
+}
+.menu-btn::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .2s;}
+.menu-btn:hover::before{opacity:1;}
+.menu-btn:active{transform:scale(.96);}
+.menu-btn.vs-cpu{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.3);}
+.menu-btn.vs-cpu::before{background:rgba(0,229,255,.08);}
+.menu-btn.vs-cpu:hover{box-shadow:0 0 24px rgba(0,229,255,.6);}
+.menu-btn.vs-p2{border-color:var(--pink);color:var(--pink);box-shadow:0 0 12px rgba(255,77,187,.3);}
+.menu-btn.vs-p2::before{background:rgba(255,77,187,.08);}
+.menu-btn.vs-p2:hover{box-shadow:0 0 24px rgba(255,77,187,.6);}
+
+#title-hi{font-size:.85rem;color:var(--text2);margin-top:20px;line-height:1.8;}
+
+/* ════════════════════════════
+   BATTLE SCREEN
+════════════════════════════ */
+#battle-screen{
+  background:radial-gradient(ellipse at 50% 50%, #0d0d1f 0%, #05050a 100%);
+  flex-direction:column;gap:0;justify-content:flex-start;
+  padding:0;
+}
+
+/* HUD */
+#battle-hud{
+  width:100%;max-width:700px;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 16px;
+  background:rgba(255,255,255,.03);
+  border-bottom:1px solid var(--border);
+}
+.hud-label{font-size:.75rem;color:var(--text2);}
+#turn-counter{font-family:'Boogaloo',cursive;font-size:1.1rem;color:var(--gold);}
+#battle-log-short{font-size:.8rem;color:var(--cyan);max-width:200px;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+
+/* ARENA */
+#arena{
+  width:100%;max-width:700px;flex:1;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:space-around;
+  padding:8px 12px;
+  position:relative;
+}
+
+/* FIGHTER SLOT */
+.fighter-slot{
+  width:100%;max-width:600px;
+  display:flex;align-items:center;gap:12px;
+  padding:10px 14px;
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--border);
+  border-radius:8px;
+  position:relative;
+  transition:box-shadow .3s;
+}
+.fighter-slot.attacking{animation:slotShake .25s ease-out;}
+@keyframes slotShake{0%,100%{transform:translateX(0);}25%{transform:translateX(6px);}75%{transform:translateX(-4px);};}
+.fighter-slot.p1-slot{border-color:rgba(0,229,255,.3);}
+.fighter-slot.p2-slot{border-color:rgba(255,77,187,.3);}
+
+/* Card image area */
+.card-face{
+  width:80px;height:110px;flex-shrink:0;
+  border-radius:8px;
+  background:var(--panel);
+  border:2px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+  font-size:2.8rem;
+}
+.card-face img{width:100%;height:100%;object-fit:cover;border-radius:6px;}
+.card-face .card-emoji-fallback{font-size:2.8rem;line-height:1;}
+.card-face .card-type-badge{
+  position:absolute;bottom:3px;left:50%;transform:translateX(-50%);
+  font-size:.5rem;font-family:'Kosugi Maru',sans-serif;
+  background:rgba(0,0,0,.7);color:var(--gold);
+  padding:1px 5px;border-radius:3px;white-space:nowrap;
+}
+
+/* Card info */
+.card-info{flex:1;}
+.card-name{font-family:'Boogaloo',cursive;font-size:1.2rem;color:white;letter-spacing:1px;}
+.card-type-tag{font-size:.65rem;color:var(--text2);margin-bottom:6px;}
+
+/* HP bar */
+.hp-wrap{margin-bottom:4px;}
+.hp-label{display:flex;justify-content:space-between;font-size:.7rem;margin-bottom:2px;}
+.hp-bar-bg{height:10px;background:rgba(255,255,255,.1);border-radius:5px;overflow:hidden;}
+.hp-bar-fill{height:100%;border-radius:5px;transition:width .5s ease, background .5s;}
+.hp-high{background:linear-gradient(90deg,#39ff14,#00e676);}
+.hp-mid {background:linear-gradient(90deg,#ffca28,#ffa000);}
+.hp-low {background:linear-gradient(90deg,#ff3a3a,#b71c1c);animation:hpCritical 1s ease-in-out infinite;}
+@keyframes hpCritical{0%,100%{opacity:1;}50%{opacity:.5;}}
+
+/* ATK display */
+.atk-display{font-size:.75rem;color:var(--text2);}
+.atk-val{font-family:'Boogaloo',cursive;font-size:1.1rem;color:var(--red);}
+
+/* Skill name badge */
+.skill-badge{
+  font-size:.6rem;color:var(--purple);border:1px solid rgba(181,123,238,.4);
+  padding:2px 6px;border-radius:4px;display:inline-block;margin-top:3px;
+}
+
+/* VS divider */
+#vs-divider{
+  font-family:'Boogaloo',cursive;font-size:2rem;color:var(--gold);
+  text-shadow:0 0 20px rgba(255,215,0,.7);
+  position:relative;
+}
+#vs-divider::before,#vs-divider::after{
+  content:'──────';color:rgba(255,215,0,.2);font-size:.9rem;
+  position:absolute;top:50%;transform:translateY(-50%);
+}
+#vs-divider::before{right:calc(100% + 8px);}
+#vs-divider::after{left:calc(100% + 8px);}
+
+/* Card queue (remaining) */
+#queue-area{
+  width:100%;max-width:600px;
+  display:flex;justify-content:space-between;
+  padding:8px 14px;
+  border-top:1px solid var(--border);
+}
+.queue-side{display:flex;gap:6px;align-items:center;}
+.queue-label{font-size:.65rem;color:var(--text2);margin-right:4px;}
+.queue-card-mini{
+  width:32px;height:44px;border-radius:4px;
+  background:var(--panel);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.2rem;
+}
+
+/* Battle log */
+#log-panel{
+  width:100%;max-width:700px;
+  height:90px;overflow-y:auto;
+  background:rgba(0,0,0,.4);
+  border-top:1px solid var(--border);
+  padding:6px 14px;
+  font-size:.75rem;color:var(--text2);
+  scroll-behavior:smooth;
+}
+.log-entry{padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.log-entry.atk{color:var(--cyan);}
+.log-entry.crit{color:var(--gold);}
+.log-entry.skill{color:var(--purple);}
+.log-entry.ko{color:var(--red);font-weight:bold;}
+.log-entry.sys{color:var(--text2);}
+
+/* Battle control */
+#battle-ctrl{
+  width:100%;max-width:700px;
+  display:flex;justify-content:center;gap:12px;
+  padding:10px;background:rgba(0,0,0,.3);
+  border-top:1px solid var(--border);
+}
+.ctrl-btn{
+  padding:10px 28px;font-family:'Boogaloo',cursive;font-size:1.2rem;
+  background:transparent;border:2px solid var(--gold);color:var(--gold);
+  border-radius:4px;cursor:pointer;
+  transition:all .15s;
+}
+.ctrl-btn:hover{background:rgba(255,215,0,.1);box-shadow:0 0 16px rgba(255,215,0,.4);}
+.ctrl-btn:disabled{opacity:.3;cursor:default;}
+
+/* ════════════════════════════
+   SKILL CUTIN
+════════════════════════════ */
+#skill-cutin{
+  position:fixed;inset:0;z-index:500;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  pointer-events:none;opacity:0;
+  background:rgba(0,0,0,.85);
+  backdrop-filter:blur(4px);
+}
+#skill-cutin.show{animation:cutinAnim .9s ease-out forwards;}
+@keyframes cutinAnim{
+  0%{opacity:0;}
+  10%{opacity:1;}
+  70%{opacity:1;}
+  100%{opacity:0;}
+}
+#cutin-card-name{
+  font-family:'Boogaloo',cursive;font-size:clamp(1.4rem,5vw,2.8rem);
+  color:white;letter-spacing:3px;
+  text-shadow:0 0 30px var(--cutin-color, #b57bee);
+  animation:cutinSlide .4s ease-out;
+  margin-bottom:10px;
+}
+@keyframes cutinSlide{0%{transform:translateX(-80px);opacity:0;}100%{transform:translateX(0);opacity:1;}}
+#cutin-skill-name{
+  font-family:'Boogaloo',cursive;font-size:clamp(2rem,8vw,4.5rem);
+  color:var(--cutin-color, #b57bee);
+  text-shadow:0 0 40px var(--cutin-color, #b57bee),0 0 80px rgba(181,123,238,.5);
+  letter-spacing:4px;
+  animation:cutinZoom .5s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes cutinZoom{0%{transform:scale(.2) rotate(-8deg);opacity:0;}100%{transform:scale(1) rotate(0deg);opacity:1;}}
+#cutin-emoji{font-size:5rem;margin-bottom:10px;animation:cutinSpin .6s ease-out;}
+@keyframes cutinSpin{0%{transform:scale(0) rotate(-180deg);}100%{transform:scale(1) rotate(0deg);}}
+#cutin-effect-line{
+  font-size:.9rem;color:rgba(255,255,255,.7);margin-top:8px;letter-spacing:2px;
+}
+
+/* Cutin scanlines */
+#skill-cutin::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px);
+  pointer-events:none;
+}
+
+/* ════════════════════════════
+   DAMAGE FLOATERS
+════════════════════════════ */
+.dmg-float{
+  position:fixed;z-index:600;pointer-events:none;
+  font-family:'Boogaloo',cursive;font-size:2rem;
+  font-weight:bold;
+  text-shadow:2px 2px 0 rgba(0,0,0,.6);
+  animation:dmgFloat .9s ease-out forwards;
+}
+.dmg-float.normal{color:#ff3a3a;}
+.dmg-float.crit{color:var(--gold);font-size:2.8rem;}
+.dmg-float.heal{color:var(--green);}
+.dmg-float.debuff{color:var(--purple);}
+@keyframes dmgFloat{
+  0%{opacity:1;transform:translateY(0) scale(.8);}
+  20%{opacity:1;transform:translateY(-20px) scale(1.2);}
+  100%{opacity:0;transform:translateY(-70px) scale(.9);}
+}
+
+/* ════════════════════════════
+   RESULT SCREEN
+════════════════════════════ */
+#result-screen{
+  background:radial-gradient(ellipse at 50% 40%, #1a0a0a 0%, #0a0a0f 70%);
+}
+#result-title{
+  font-family:'Boogaloo',cursive;font-size:clamp(2rem,7vw,4rem);
+  margin-bottom:6px;
+  animation:resultIn .6s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes resultIn{0%{transform:scale(.3) rotate(-10deg);opacity:0;}100%{transform:scale(1);opacity:1;}}
+.result-winner{color:var(--gold);text-shadow:0 0 30px rgba(255,215,0,.8);}
+.result-lose{color:var(--red);text-shadow:0 0 30px rgba(255,58,58,.8);}
+.result-draw{color:var(--cyan);}
+
+.result-cards{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin:20px 0;}
+.res-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:12px;text-align:center;min-width:100px;
+}
+.res-card-emoji{font-size:2.5rem;}
+.res-card-name{font-size:.8rem;color:var(--text2);margin-top:4px;}
+.res-card-hp{font-family:'Boogaloo',cursive;font-size:1.1rem;color:var(--green);}
+
+.res-btn{
+  margin:8px;padding:14px 36px;
+  font-family:'Boogaloo',cursive;font-size:1.4rem;
+  background:transparent;border:2px solid;border-radius:4px;cursor:pointer;
+  transition:all .15s;
+}
+.res-btn.replay{border-color:var(--cyan);color:var(--cyan);}
+.res-btn.replay:hover{background:rgba(0,229,255,.1);box-shadow:0 0 20px rgba(0,229,255,.4);}
+.res-btn.title{border-color:var(--gold);color:var(--gold);}
+.res-btn.title:hover{background:rgba(255,215,0,.1);box-shadow:0 0 20px rgba(255,215,0,.4);}
+
+/* ════════════════════════════
+   FLASH / HIT OVERLAY
+════════════════════════════ */
+#hit-overlay{
+  position:fixed;inset:0;z-index:400;pointer-events:none;opacity:0;
+}
+#hit-overlay.flash{animation:hitFlash .3s ease-out forwards;}
+@keyframes hitFlash{0%{opacity:.5;background:white;}100%{opacity:0;}}
+
+/* BGM btn */
+#bgm-btn{position:fixed;top:10px;right:10px;z-index:1000;
+  background:rgba(255,255,255,.1);border:1px solid var(--border);
+  border-radius:50%;width:40px;height:40px;font-size:1.2rem;cursor:pointer;color:white;}
+
+/* Particle burst */
+.particle{
+  position:fixed;z-index:600;pointer-events:none;
+  width:8px;height:8px;border-radius:50%;
+  animation:particleBurst var(--dur,.6s) ease-out forwards;
+}
+@keyframes particleBurst{
+  0%{transform:translate(0,0) scale(1);opacity:1;}
+  100%{transform:translate(var(--tx,0),var(--ty,-60px)) scale(0);opacity:0;}
+}
+</style>
+</head>
+<body>
+
+<button id="bgm-btn" onclick="toggleBGM()">🎵</button>
+<div id="hit-overlay"></div>
+<div id="skill-cutin">
+  <div id="cutin-emoji"></div>
+  <div id="cutin-card-name"></div>
+  <div id="cutin-skill-name"></div>
+  <div id="cutin-effect-line"></div>
+</div>
+
+<!-- ═══ TITLE ═══ -->
+<div id="title-screen" class="screen">
+  <div class="title-cats">🐱⚔️🐱</div>
+  <div class="title-glow">CAT CARD BATTLE</div>
+  <div class="title-sub">MEOW OR BE MEOWED</div>
+  <button class="menu-btn vs-cpu" onclick="startGame('cpu')">⚔️ VS CPU</button>
+  <button class="menu-btn vs-p2"  onclick="startGame('pvp')">👥 VS プレイヤー2</button>
+  <div id="title-hi"></div>
+</div>
+
+<!-- ═══ BATTLE ═══ -->
+<div id="battle-screen" class="screen hidden">
+  <div id="battle-hud">
+    <div><div class="hud-label">ターン</div><div id="turn-counter">1</div></div>
+    <div id="battle-log-short">準備中…</div>
+    <div><div class="hud-label" id="mode-label">VS CPU</div></div>
+  </div>
+
+  <div id="arena">
+    <!-- P1 fighter -->
+    <div class="fighter-slot p1-slot" id="slot-p1">
+      <div class="card-face" id="face-p1">
+        <span class="card-emoji-fallback" id="emoji-p1">🐱</span>
+        <span class="card-type-badge" id="typebadge-p1"></span>
+      </div>
+      <div class="card-info">
+        <div class="card-name" id="name-p1">—</div>
+        <div class="card-type-tag" id="tag-p1"></div>
+        <div class="hp-wrap">
+          <div class="hp-label"><span>HP</span><span id="hp-label-p1">—</span></div>
+          <div class="hp-bar-bg"><div class="hp-bar-fill hp-high" id="hp-bar-p1" style="width:100%"></div></div>
+        </div>
+        <div class="atk-display">ATK <span class="atk-val" id="atk-p1">—</span></div>
+        <div class="skill-badge" id="skill-badge-p1"></div>
+      </div>
+    </div>
+
+    <div id="vs-divider">VS</div>
+
+    <!-- P2 / CPU fighter -->
+    <div class="fighter-slot p2-slot" id="slot-p2">
+      <div class="card-face" id="face-p2">
+        <span class="card-emoji-fallback" id="emoji-p2">🐱</span>
+        <span class="card-type-badge" id="typebadge-p2"></span>
+      </div>
+      <div class="card-info">
+        <div class="card-name" id="name-p2">—</div>
+        <div class="card-type-tag" id="tag-p2"></div>
+        <div class="hp-wrap">
+          <div class="hp-label"><span>HP</span><span id="hp-label-p2">—</span></div>
+          <div class="hp-bar-bg"><div class="hp-bar-fill hp-high" id="hp-bar-p2" style="width:100%"></div></div>
+        </div>
+        <div class="atk-display">ATK <span class="atk-val" id="atk-p2">—</span></div>
+        <div class="skill-badge" id="skill-badge-p2"></div>
+      </div>
+    </div>
+
+    <!-- Remaining cards -->
+    <div id="queue-area">
+      <div class="queue-side" id="queue-p1">
+        <span class="queue-label">P1残り▶</span>
+      </div>
+      <div class="queue-side" id="queue-p2">
+        <span class="queue-label">◀P2残り</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div id="log-panel"></div>
+
+  <!-- Controls -->
+  <div id="battle-ctrl">
+    <button class="ctrl-btn" id="btn-auto" onclick="toggleAuto()">▶ 自動戦闘</button>
+    <button class="ctrl-btn" id="btn-next" onclick="doNextTurn()">次のターン</button>
+    <button class="ctrl-btn" onclick="goTitle()" style="border-color:#555;color:#555;font-size:1rem;">⏏ 降参</button>
+  </div>
+</div>
+
+<!-- ═══ RESULT ═══ -->
+<div id="result-screen" class="screen hidden">
+  <div id="result-title">—</div>
+  <div id="result-sub" style="font-size:1rem;color:var(--text2);margin-bottom:10px;"></div>
+  <div class="result-cards" id="result-cards"></div>
+  <div>
+    <button class="res-btn replay" onclick="startGame(lastMode)">🔄 もう一かい</button>
+    <button class="res-btn title"  onclick="goTitle()">🏠 タイトル</button>
+  </div>
+</div>
+
+<!-- AUDIO -->
+<audio id="bgm-title"   src="sounds/bgm_title.mp3"   loop></audio>
+<audio id="bgm-battle"  src="sounds/bgm_battle.mp3"  loop></audio>
+<audio id="bgm-victory" src="sounds/bgm_victory.mp3"     ></audio>
+<audio id="bgm-defeat"  src="sounds/bgm_defeat.mp3"      ></audio>
+<audio id="se-attack"   src="sounds/se_attack.mp3"       ></audio>
+<audio id="se-critical" src="sounds/se_critical.mp3"     ></audio>
+<audio id="se-damage"   src="sounds/se_damage.mp3"       ></audio>
+<audio id="se-skill"    src="sounds/se_skill.mp3"        ></audio>
+<audio id="se-ko"       src="sounds/se_ko.mp3"           ></audio>
+
+<script>
+// ═══════════════════════════════════════════
+// CARD DATABASE
+// ═══════════════════════════════════════════
+const CARD_DB = [
+  {
+    id:'ninja',      name:'NINJA CAT',         emoji:'🥷',
+    archetype:'atk', type:'STEALTH',           typeColor:'#555',
+    atkRange:[4,6],  hpRange:[8,12],
+    skill:{
+      name:'SHADOW SLASH',
+      desc:'気づかれる前に斬る',
+      effect:'double_atk',
+      prob:.15,
+      color:'#555',
+      cutin:'💀',
+    },
+  },
+  {
+    id:'knight',     name:'KNIGHT CAT',        emoji:'⚔️',
+    archetype:'def', type:'KNIGHT',            typeColor:'#7eb8f7',
+    atkRange:[2,4],  hpRange:[16,22],
+    skill:{
+      name:'HOLY GUARD',
+      desc:'3ターン ダメージ半減',
+      effect:'shield',
+      prob:.20,
+      color:'#7eb8f7',
+      cutin:'🛡️',
+    },
+  },
+  {
+    id:'smudge',     name:'SMUDGE LORD',       emoji:'😤',
+    archetype:'trick',type:'CHAOS',            typeColor:'#39ff14',
+    atkRange:[3,5],  hpRange:[10,14],
+    skill:{
+      name:'TABLE RAGE',
+      desc:'相手ATKを2ターン半減',
+      effect:'atk_debuff',
+      prob:.22,
+      color:'#39ff14',
+      cutin:'💢',
+    },
+  },
+  {
+    id:'boss',       name:'BOSS CAT',          emoji:'💼',
+    archetype:'bal', type:'BUSINESS',          typeColor:'#ffd700',
+    atkRange:[3,5],  hpRange:[12,16],
+    skill:{
+      name:'HOSTILE TAKEOVER',
+      desc:'相手HPの15%を奪いこちらに追加',
+      effect:'drain',
+      prob:.18,
+      color:'#ffd700',
+      cutin:'💰',
+    },
+  },
+  {
+    id:'polite',     name:'POLITE CAT',        emoji:'🙇',
+    archetype:'def', type:'ETIQUETTE',         typeColor:'#ff4dbb',
+    atkRange:[2,3],  hpRange:[14,20],
+    skill:{
+      name:'PURRFECT MANNERS',
+      desc:'HPを8回復',
+      effect:'heal',
+      prob:.25,
+      color:'#ff4dbb',
+      cutin:'✨',
+    },
+  },
+  {
+    id:'bongo',      name:'BONGO CAT',         emoji:'🥁',
+    archetype:'trick',type:'RHYTHM',           typeColor:'#ff7043',
+    atkRange:[3,5],  hpRange:[11,15],
+    skill:{
+      name:'RHYTHM REVOLUTION',
+      desc:'2ターン ATK+3',
+      effect:'atk_buff',
+      prob:.20,
+      color:'#ff7043',
+      cutin:'🎵',
+    },
+  },
+  {
+    id:'pc',         name:'PC CAT',            emoji:'💻',
+    archetype:'trick',type:'TECH',             typeColor:'#00e5ff',
+    atkRange:[3,5],  hpRange:[10,14],
+    skill:{
+      name:'DIGITAL DAEMON',
+      desc:'70%で大ダメージ、30%で自爆',
+      effect:'gamble',
+      prob:.18,
+      color:'#00e5ff',
+      cutin:'⚡',
+    },
+  },
+  {
+    id:'slot',       name:'SLOT MACHINE CAT',  emoji:'🎰',
+    archetype:'trick',type:'GRIND',            typeColor:'#b57bee',
+    atkRange:[2,6],  hpRange:[10,16],
+    skill:{
+      name:'ETERNAL GRIND',
+      desc:'ランダムで0〜ATK×3ダメージ',
+      effect:'slot',
+      prob:.22,
+      color:'#b57bee',
+      cutin:'🎲',
+    },
+  },
+  {
+    id:'astro',      name:'ASTRO CAT',         emoji:'🚀',
+    archetype:'bal', type:'COSMOS',            typeColor:'#00e5ff',
+    atkRange:[3,5],  hpRange:[12,16],
+    skill:{
+      name:'GRAVITY SHIFT',
+      desc:'相手の次の攻撃を無効化',
+      effect:'dodge',
+      prob:.15,
+      color:'#00e5ff',
+      cutin:'🌌',
+    },
+  },
+  {
+    id:'wizard',     name:'WIZARD DEALER CAT', emoji:'🧙',
+    archetype:'trick',type:'WIZARD',           typeColor:'#b57bee',
+    atkRange:[2,5],  hpRange:[10,14],
+    skill:{
+      name:'ELEMENTAL SHUFFLE',
+      desc:'相手のスキルを1ターン封印',
+      effect:'seal',
+      prob:.18,
+      color:'#b57bee',
+      cutin:'🔮',
+    },
+  },
+  {
+    id:'grumpy',     name:'GRUMPY CAT',        emoji:'😾',
+    archetype:'def', type:'MISERY',            typeColor:'#aaa',
+    atkRange:[2,3],  hpRange:[15,20],
+    skill:{
+      name:'ETERNAL SOUR',
+      desc:'相手ATKを-2（永続）',
+      effect:'atk_debuff_perm',
+      prob:.20,
+      color:'#aaa',
+      cutin:'😡',
+    },
+  },
+  {
+    id:'samurai',    name:'SAMURAI CAT',       emoji:'🗡️',
+    archetype:'atk', type:'HONOR',            typeColor:'#e53935',
+    atkRange:[5,7],  hpRange:[8,12],
+    skill:{
+      name:'BLADE FURY',
+      desc:'3回連続攻撃',
+      effect:'multi_hit',
+      prob:.15,
+      color:'#e53935',
+      cutin:'⚔️',
+    },
+  },
+  {
+    id:'hotel',      name:'HOTEL MAN CAT',     emoji:'🏨',
+    archetype:'def', type:'HOSPITALITY',       typeColor:'#ffd700',
+    atkRange:[2,3],  hpRange:[16,22],
+    skill:{
+      name:'WHITE GLOVE SERVICE',
+      desc:'全ステータスを小回復＆AT強化',
+      effect:'full_buff',
+      prob:.18,
+      color:'#ffd700',
+      cutin:'🛎️',
+    },
+  },
+];
+
+// ═══════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════
+let gameMode='cpu'; // 'cpu' or 'pvp'
+let lastMode='cpu';
+let p1State=null, p2State=null; // current fighters
+let p1Deck=[], p2Deck=[];       // remaining cards
+let turnCount=1;
+let gameRunning=false;
+let autoMode=false;
+let autoTimer=null;
+let bgmEnabled=true;
+
+// Status effect stacks
+function newEffects(){return{shield:0,atkBuff:0,atkDebuff:0,atkDebuffPerm:0,dodge:false,sealed:false};}
+
+// ═══════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════
+const actx=new(window.AudioContext||window.webkitAudioContext)();
+function rctx(){if(actx.state==='suspended')actx.resume();}
+document.addEventListener('pointerdown',function f(){rctx();document.removeEventListener('pointerdown',f);},{once:true});
+
+function playBGM(id){
+  ['bgm-title','bgm-battle','bgm-victory','bgm-defeat'].forEach(bid=>{
+    const el=document.getElementById(bid);
+    if(el&&!el.paused)el.pause();
+  });
+  if(!bgmEnabled)return;
+  const el=document.getElementById(id);
+  if(el){el.currentTime=0;el.play().catch(()=>{});}
+}
+function playSE(id){
+  if(!bgmEnabled)return;
+  const el=document.getElementById(id);
+  if(el){el.currentTime=0;el.play().catch(()=>{});}
+}
+// Fallback beeps via WebAudio
+function beep(type){
+  try{
+    const o=actx.createOscillator(),g=actx.createGain();
+    o.connect(g);g.connect(actx.destination);
+    const t=actx.currentTime;
+    ({
+      attack:()=>{o.frequency.setValueAtTime(440,t);o.frequency.exponentialRampToValueAtTime(220,t+.12);g.gain.setValueAtTime(.3,t);g.gain.exponentialRampToValueAtTime(.001,t+.15);o.start();o.stop(t+.15);},
+      crit:  ()=>{[0,.06,.12].forEach((d,i)=>{const o2=actx.createOscillator(),g2=actx.createGain();o2.connect(g2);g2.connect(actx.destination);o2.frequency.value=[660,880,1100][i];g2.gain.setValueAtTime(.25,t+d);g2.gain.exponentialRampToValueAtTime(.001,t+d+.15);o2.start(t+d);o2.stop(t+d+.15);});},
+      skill: ()=>{o.type='sawtooth';o.frequency.setValueAtTime(200,t);o.frequency.exponentialRampToValueAtTime(800,t+.4);g.gain.setValueAtTime(.25,t);g.gain.exponentialRampToValueAtTime(.001,t+.45);o.start();o.stop(t+.45);},
+      damage:()=>{o.type='sawtooth';o.frequency.setValueAtTime(150,t);g.gain.setValueAtTime(.2,t);g.gain.exponentialRampToValueAtTime(.001,t+.12);o.start();o.stop(t+.12);},
+      ko:    ()=>{o.frequency.setValueAtTime(300,t);o.frequency.exponentialRampToValueAtTime(50,t+.6);g.gain.setValueAtTime(.4,t);g.gain.exponentialRampToValueAtTime(.001,t+.65);o.start();o.stop(t+.65);},
+      heal:  ()=>{o.frequency.value=880;g.gain.setValueAtTime(.2,t);g.gain.exponentialRampToValueAtTime(.001,t+.2);o.start();o.stop(t+.2);},
+    })[type]?.();
+  }catch(e){}
+}
+
+function toggleBGM(){
+  bgmEnabled=!bgmEnabled;
+  document.getElementById('bgm-btn').textContent=bgmEnabled?'🎵':'🔇';
+  if(!bgmEnabled){['bgm-title','bgm-battle','bgm-victory','bgm-defeat'].forEach(id=>{const el=document.getElementById(id);if(el)el.pause();});}
+}
+
+// ═══════════════════════════════════════════
+// SCREEN NAV
+// ═══════════════════════════════════════════
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function goTitle(){
+  gameRunning=false;autoMode=false;clearTimeout(autoTimer);
+  showScreen('title-screen');
+  playBGM('bgm-title');
+  updateTitleHi();
+}
+
+function updateTitleHi(){
+  const hi=loadHi();
+  document.getElementById('title-hi').innerHTML=
+    `📅 本日ベスト<br>CPU戦:<b style="color:var(--gold)">${hi.cpu}</b>　PVP:<b style="color:var(--pink)">${hi.pvp}</b>`;
+}
+
+// ═══════════════════════════════════════════
+// DAILY HI
+// ═══════════════════════════════════════════
+function todayKey(){const d=new Date();return`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;}
+function loadHi(){
+  try{const r=JSON.parse(localStorage.getItem('catbattle-hi')||'{}');if(r.date!==todayKey())return{cpu:0,pvp:0};return r.scores||{cpu:0,pvp:0};}
+  catch(e){return{cpu:0,pvp:0};}
+}
+function saveHi(mode,wins){
+  const h=loadHi();if(wins>h[mode]){h[mode]=wins;try{localStorage.setItem('catbattle-hi',JSON.stringify({date:todayKey(),scores:h}));}catch(e){}}
+}
+
+// ═══════════════════════════════════════════
+// CARD INSTANTIATION
+// ═══════════════════════════════════════════
+function rollCard(def){
+  const atk=Math.floor(def.atkRange[0]+Math.random()*(def.atkRange[1]-def.atkRange[0]+1));
+  const hp =Math.floor(def.hpRange[0] +Math.random()*(def.hpRange[1] -def.hpRange[0] +1));
+  return{
+    ...def,
+    atk, maxHp:hp, hp,
+    effects:newEffects(),
+    imgPath:`images/${def.id}.png`, // 後で差し込み用
+  };
+}
+
+function makeRandomDeck(n=3){
+  const shuffled=[...CARD_DB].sort(()=>Math.random()-.5);
+  return shuffled.slice(0,n).map(rollCard);
+}
+
+// ═══════════════════════════════════════════
+// GAME START
+// ═══════════════════════════════════════════
+function startGame(mode){
+  rctx();
+  gameMode=mode; lastMode=mode;
+  p1Deck=makeRandomDeck(3);
+  p2Deck=makeRandomDeck(3);
+  turnCount=1; gameRunning=true; autoMode=false;
+  clearTimeout(autoTimer);
+
+  document.getElementById('mode-label').textContent=mode==='cpu'?'VS CPU':'VS P2';
+  document.getElementById('btn-auto').textContent='▶ 自動戦闘';
+  document.getElementById('btn-next').disabled=false;
+
+  showScreen('battle-screen');
+  playBGM('bgm-battle');
+
+  nextFighters();
+  renderAll();
+  addLog('sys','⚔️ バトル開始！');
+}
+
+function nextFighters(){
+  p1State=p1Deck.shift();
+  p2State=p2Deck.shift();
+  if(p1State)p1State.effects=newEffects();
+  if(p2State)p2State.effects=newEffects();
+}
+
+// ═══════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════
+function renderAll(){
+  renderFighter('p1',p1State);
+  renderFighter('p2',p2State);
+  renderQueues();
+  document.getElementById('turn-counter').textContent=turnCount;
+}
+
+function renderFighter(side,card){
+  if(!card){
+    document.getElementById(`name-${side}`).textContent='—';
+    document.getElementById(`hp-label-${side}`).textContent='—';
+    document.getElementById(`atk-${side}`).textContent='—';
+    document.getElementById(`emoji-${side}`).textContent='💀';
+    document.getElementById(`skill-badge-${side}`).textContent='';
+    return;
+  }
+  document.getElementById(`name-${side}`).textContent=card.name;
+  document.getElementById(`tag-${side}`).textContent=`[${card.type}]  ${archetypeName(card.archetype)}`;
+  document.getElementById(`typebadge-${side}`).textContent=card.type;
+  document.getElementById(`atk-${side}`).textContent=effectiveAtk(card);
+  document.getElementById(`skill-badge-${side}`).textContent=`⚡ ${card.skill.name}`;
+
+  // Emoji (fallback until image)
+  const emojiEl=document.getElementById(`emoji-${side}`);
+  emojiEl.textContent=card.emoji;
+
+  // Try image
+  const face=document.getElementById(`face-${side}`);
+  let img=face.querySelector('img');
+  const imgPath=`images/${card.id}.png`;
+  if(!img){img=document.createElement('img');img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:6px;';face.appendChild(img);}
+  img.src=imgPath;
+  img.onerror=()=>{img.style.display='none';emojiEl.style.display='block';};
+  img.onload=()=>{emojiEl.style.display='none';img.style.display='block';};
+
+  updateHP(side,card);
+}
+
+function archetypeName(a){return{atk:'⚔️攻撃型',def:'🛡️防御型',trick:'🎲トリッキー',bal:'⚖️バランス'}[a]||a;}
+
+function updateHP(side,card){
+  const pct=Math.max(0,card.hp/card.maxHp*100);
+  const bar=document.getElementById(`hp-bar-${side}`);
+  bar.style.width=pct+'%';
+  bar.className='hp-bar-fill '+(pct>50?'hp-high':pct>25?'hp-mid':'hp-low');
+  document.getElementById(`hp-label-${side}`).textContent=`${Math.max(0,card.hp)} / ${card.maxHp}`;
+}
+
+function renderQueues(){
+  ['p1','p2'].forEach(side=>{
+    const deck=side==='p1'?p1Deck:p2Deck;
+    const wrap=document.getElementById(`queue-${side}`);
+    // keep label
+    const label=wrap.querySelector('.queue-label');
+    wrap.innerHTML='';wrap.appendChild(label);
+    deck.forEach(c=>{
+      const m=document.createElement('div');m.className='queue-card-mini';m.textContent=c.emoji;
+      wrap.appendChild(m);
+    });
+    if(deck.length===0){const m=document.createElement('div');m.className='queue-card-mini';m.textContent='—';wrap.appendChild(m);}
+  });
+}
+
+// ═══════════════════════════════════════════
+// BATTLE LOGIC
+// ═══════════════════════════════════════════
+function effectiveAtk(card){
+  let atk=card.atk;
+  atk+=card.effects.atkBuff||0;
+  atk=Math.max(1,atk-(card.effects.atkDebuff||0)-(card.effects.atkDebuffPerm||0));
+  return atk;
+}
+
+async function doNextTurn(){
+  if(!gameRunning||!p1State||!p2State)return;
+  document.getElementById('btn-next').disabled=true;
+
+  await executeTurn();
+
+  if(gameRunning)document.getElementById('btn-next').disabled=false;
+}
+
+async function executeTurn(){
+  // 両者が攻撃するフルターン
+  addLog('sys',`── ターン ${turnCount} ──`);
+
+  // P1 attacks P2
+  await doAttack(p1State,p2State,'p1','p2');
+  if(p2State.hp<=0){await handleKO('p2');return;}
+
+  // P2 / CPU attacks P1
+  if(gameMode==='cpu'){
+    await delay(500);
+  }
+  await doAttack(p2State,p1State,'p2','p1');
+  if(p1State.hp<=0){await handleKO('p1');return;}
+
+  // Tick effects
+  tickEffects(p1State);tickEffects(p2State);
+  turnCount++;
+  renderAll();
+  document.getElementById('battle-log-short').textContent=`ターン${turnCount} 進行中`;
+}
+
+async function doAttack(attacker,defender,atkSide,defSide){
+  // Skill check
+  if(!attacker.effects.sealed && Math.random()<attacker.skill.prob){
+    await triggerSkill(attacker,defender,atkSide,defSide);
+    return;
+  }
+
+  // Normal attack
+  let atk=effectiveAtk(attacker);
+
+  // Dodge check
+  if(defender.effects.dodge){
+    defender.effects.dodge=false;
+    addLog('atk',`${attacker.name} の攻撃を ${defender.name} が回避！`);
+    showDmgFloat('DODGE!','debuff',defSide);
+    return;
+  }
+
+  // Shield
+  if(defender.effects.shield>0)atk=Math.ceil(atk/2);
+
+  // Critical (15%)
+  const isCrit=Math.random()<.15;
+  const dmg=isCrit?Math.ceil(atk*1.8):atk;
+
+  // Apply
+  defender.hp=Math.max(0,defender.hp-dmg);
+
+  playSE('se-attack');beep(isCrit?'crit':'attack');
+  if(isCrit){
+    playSE('se-critical');
+    addLog('crit',`💥 クリティカル！ ${attacker.name} → ${dmg}ダメージ！`);
+    hitFlash();
+    showDmgFloat(`💥${dmg}!`,'crit',defSide);
+    spawnParticles(defSide);
+  }else{
+    addLog('atk',`${attacker.name} の攻撃 → ${defender.name} に ${dmg}ダメージ`);
+    showDmgFloat(`-${dmg}`,'normal',defSide);
+  }
+
+  document.getElementById(`slot-${atkSide}`).classList.add('attacking');
+  setTimeout(()=>document.getElementById(`slot-${atkSide}`).classList.remove('attacking'),300);
+
+  playSE('se-damage');beep('damage');
+  updateHP(defSide,defender);
+  await delay(400);
+}
+
+async function triggerSkill(attacker,defender,atkSide,defSide){
+  const skill=attacker.skill;
+  // Show cutin
+  await showSkillCutin(attacker,skill);
+  playSE('se-skill');beep('skill');
+  addLog('skill',`⚡ スキル発動！ 【${skill.name}】`);
+
+  const atk=effectiveAtk(attacker);
+
+  switch(skill.effect){
+    case'double_atk':{
+      const d=Math.ceil(atk*2);
+      defender.hp=Math.max(0,defender.hp-d);
+      addLog('skill',`  ↳ ${defender.name}に ${d}ダメージ（×2）`);
+      showDmgFloat(`💀${d}!!`,'crit',defSide);
+      spawnParticles(defSide);hitFlash();
+      break;}
+    case'shield':
+      attacker.effects.shield=3;
+      addLog('skill',`  ↳ 3ターンの間ダメージ半減！`);
+      showDmgFloat('🛡️GUARD','debuff',atkSide);
+      break;
+    case'atk_debuff':
+      defender.effects.atkDebuff=(defender.effects.atkDebuff||0)+Math.ceil(atk*.5);
+      addLog('skill',`  ↳ ${defender.name}のATKが2ターン半減！`);
+      showDmgFloat('ATK↓↓','debuff',defSide);
+      break;
+    case'atk_debuff_perm':
+      defender.effects.atkDebuffPerm=(defender.effects.atkDebuffPerm||0)+2;
+      addLog('skill',`  ↳ ${defender.name}のATKが永続-2！`);
+      showDmgFloat('ATK▼','debuff',defSide);
+      break;
+    case'drain':{
+      const drain=Math.ceil(defender.hp*.15);
+      defender.hp=Math.max(0,defender.hp-drain);
+      attacker.hp=Math.min(attacker.maxHp,attacker.hp+drain);
+      addLog('skill',`  ↳ ${drain}HP吸収！`);
+      showDmgFloat(`💰-${drain}`,'crit',defSide);
+      showDmgFloat(`+${drain}HP`,'heal',atkSide);
+      beep('heal');updateHP(atkSide,attacker);
+      break;}
+    case'heal':{
+      const h=8;attacker.hp=Math.min(attacker.maxHp,attacker.hp+h);
+      addLog('skill',`  ↳ HPを${h}回復！`);
+      showDmgFloat(`+${h}HP`,'heal',atkSide);
+      beep('heal');updateHP(atkSide,attacker);
+      break;}
+    case'atk_buff':
+      attacker.effects.atkBuff=(attacker.effects.atkBuff||0)+3;
+      addLog('skill',`  ↳ ATK+3（2ターン）`);
+      showDmgFloat('ATK↑↑','heal',atkSide);
+      break;
+    case'gamble':{
+      if(Math.random()<.7){
+        const d=Math.ceil(atk*2.5);
+        defender.hp=Math.max(0,defender.hp-d);
+        addLog('skill',`  ↳ 成功！${d}大ダメージ！`);
+        showDmgFloat(`⚡${d}!!!`,'crit',defSide);hitFlash();spawnParticles(defSide);
+      }else{
+        const d=Math.ceil(atk*.8);
+        attacker.hp=Math.max(0,attacker.hp-d);
+        addLog('skill',`  ↳ バグ！自分に${d}ダメージ…`);
+        showDmgFloat(`💥自爆-${d}`,'normal',atkSide);updateHP(atkSide,attacker);
+      }break;}
+    case'slot':{
+      const d=Math.floor(Math.random()*(atk*3+1));
+      defender.hp=Math.max(0,defender.hp-d);
+      addLog('skill',`  ↳ スロット → ${d}ダメージ！`);
+      showDmgFloat(`🎰${d}`,'crit',defSide);
+      break;}
+    case'dodge':
+      attacker.effects.dodge=true;
+      addLog('skill',`  ↳ 次の攻撃を回避する！`);
+      showDmgFloat('🌌EVADE','debuff',atkSide);
+      break;
+    case'seal':
+      defender.effects.sealed=true;
+      addLog('skill',`  ↳ ${defender.name}のスキルを1ターン封印！`);
+      showDmgFloat('🔮封印','debuff',defSide);
+      break;
+    case'multi_hit':{
+      let total=0;
+      for(let i=0;i<3;i++){
+        const d=Math.max(1,atk+Math.floor((Math.random()-.3)*2));
+        defender.hp=Math.max(0,defender.hp-d);total+=d;
+        showDmgFloat(`-${d}`,'normal',defSide);
+        await delay(200);
+      }
+      addLog('skill',`  ↳ 3連撃！合計${total}ダメージ！`);
+      spawnParticles(defSide);hitFlash();break;}
+    case'full_buff':
+      attacker.hp=Math.min(attacker.maxHp,attacker.hp+4);
+      attacker.effects.atkBuff=(attacker.effects.atkBuff||0)+2;
+      addLog('skill',`  ↳ HP+4, ATK+2（フルサービス）`);
+      showDmgFloat('🛎️+4HP+2ATK','heal',atkSide);
+      beep('heal');updateHP(atkSide,attacker);
+      break;
+  }
+
+  updateHP(defSide,defender);
+  await delay(300);
+}
+
+function tickEffects(card){
+  if(card.effects.shield>0)card.effects.shield--;
+  if(card.effects.atkBuff>0)card.effects.atkBuff--;
+  if(card.effects.atkDebuff>0)card.effects.atkDebuff--;
+  card.effects.sealed=false;
+}
+
+async function handleKO(deadSide){
+  const dead=deadSide==='p1'?p1State:p2State;
+  beep('ko');playSE('se-ko');
+  addLog('ko',`💀 ${dead.name} がやられた！`);
+  showDmgFloat('K.O.!!','crit',deadSide);
+  hitFlash();
+
+  await delay(800);
+
+  // Check if winner has cards left
+  const p1HasMore=p1Deck.length>0;
+  const p2HasMore=p2Deck.length>0;
+
+  if(deadSide==='p2'){
+    if(p2HasMore){
+      addLog('sys','▶ 次のカードが登場！');
+      p2State=p2Deck.shift();p2State.effects=newEffects();
+      renderAll();
+    }else{
+      endGame('p1');return;
+    }
+  }else{
+    if(p1HasMore){
+      addLog('sys','▶ 次のカードが登場！');
+      p1State=p1Deck.shift();p1State.effects=newEffects();
+      renderAll();
+    }else{
+      endGame('p2');return;
+    }
+  }
+  turnCount++;renderAll();
+}
+
+function endGame(winner){
+  gameRunning=false;autoMode=false;clearTimeout(autoTimer);
+
+  const isP1Win=winner==='p1';
+  const modeLabel=gameMode==='cpu'?'CPU戦':'PVP';
+
+  let titleText,titleClass;
+  if(gameMode==='cpu'){
+    if(isP1Win){titleText='🏆 YOU WIN!';titleClass='result-winner';}
+    else{titleText='💀 GAME OVER';titleClass='result-lose';}
+  }else{
+    titleText=isP1Win?'🏆 P1 WIN!':'🏆 P2 WIN!';
+    titleClass='result-winner';
+  }
+
+  document.getElementById('result-title').textContent=titleText;
+  document.getElementById('result-title').className=titleClass;
+  document.getElementById('result-sub').textContent=`${turnCount}ターン終了 ─ ${modeLabel}`;
+
+  // Show surviving cards
+  const winCards=isP1Win?[p1State,...p1Deck]:[p2State,...p2Deck];
+  const rc=document.getElementById('result-cards');rc.innerHTML='';
+  winCards.filter(Boolean).forEach(c=>{
+    const div=document.createElement('div');div.className='res-card';
+    div.innerHTML=`<div class="res-card-emoji">${c.emoji}</div><div class="res-card-name">${c.name}</div><div class="res-card-hp">HP ${Math.max(0,c.hp)}</div>`;
+    rc.appendChild(div);
+  });
+
+  showScreen('result-screen');
+  playBGM(isP1Win?'bgm-victory':'bgm-defeat');
+}
+
+// ═══════════════════════════════════════════
+// AUTO BATTLE
+// ═══════════════════════════════════════════
+function toggleAuto(){
+  autoMode=!autoMode;
+  document.getElementById('btn-auto').textContent=autoMode?'⏸ 停止':'▶ 自動戦闘';
+  document.getElementById('btn-next').disabled=autoMode;
+  if(autoMode)runAutoLoop();else clearTimeout(autoTimer);
+}
+
+async function runAutoLoop(){
+  if(!autoMode||!gameRunning)return;
+  await doNextTurn();
+  if(gameRunning&&autoMode)autoTimer=setTimeout(runAutoLoop,1200);
+}
+
+// ═══════════════════════════════════════════
+// SKILL CUTIN
+// ═══════════════════════════════════════════
+function showSkillCutin(card,skill){
+  return new Promise(resolve=>{
+    const cutin=document.getElementById('skill-cutin');
+    document.getElementById('cutin-emoji').textContent=skill.cutin||card.emoji;
+    document.getElementById('cutin-card-name').textContent=card.name;
+    document.getElementById('cutin-skill-name').textContent=skill.name;
+    document.getElementById('cutin-effect-line').textContent=skill.desc;
+    cutin.style.setProperty('--cutin-color',skill.color||'#b57bee');
+    cutin.classList.remove('show');void cutin.offsetWidth;
+    cutin.classList.add('show');
+    setTimeout(resolve,950);
+  });
+}
+
+// ═══════════════════════════════════════════
+// VFX
+// ═══════════════════════════════════════════
+function hitFlash(){
+  const el=document.getElementById('hit-overlay');
+  el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');
+}
+
+function showDmgFloat(text,type,side){
+  const slot=document.getElementById(`slot-${side}`);
+  if(!slot)return;
+  const rect=slot.getBoundingClientRect();
+  const el=document.createElement('div');
+  el.className=`dmg-float ${type}`;
+  el.textContent=text;
+  el.style.left=(rect.left+rect.width/2-30)+'px';
+  el.style.top=(rect.top+20)+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),950);
+}
+
+function spawnParticles(side){
+  const slot=document.getElementById(`slot-${side}`);
+  if(!slot)return;
+  const rect=slot.getBoundingClientRect();
+  const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+  const colors=['#FFD700','#ff3a3a','#00e5ff','#39ff14','#b57bee'];
+  for(let i=0;i<10;i++){
+    const el=document.createElement('div');
+    el.className='particle';
+    const angle=Math.random()*Math.PI*2;
+    const dist=40+Math.random()*60;
+    el.style.cssText=`left:${cx}px;top:${cy}px;background:${colors[i%colors.length]};--tx:${Math.cos(angle)*dist}px;--ty:${Math.sin(angle)*dist-40}px;--dur:${.4+Math.random()*.4}s;`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),900);
+  }
+}
+
+// ═══════════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════════
+function addLog(type,msg){
+  const panel=document.getElementById('log-panel');
+  const el=document.createElement('div');
+  el.className=`log-entry ${type}`;el.textContent=msg;
+  panel.appendChild(el);panel.scrollTop=panel.scrollHeight;
+  document.getElementById('battle-log-short').textContent=msg;
+}
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+showScreen('title-screen');
+playBGM('bgm-title');
+updateTitleHi();
+</script>
+</body>
+</html>

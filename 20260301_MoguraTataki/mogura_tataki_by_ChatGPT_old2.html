@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>進化版もぐら叩き</title>
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:linear-gradient(#7ec8e3,#4aa3d8);
+  text-align:center;
+  color:#fff;
+}
+h1{margin-top:20px;}
+.top-ui{
+  display:flex;
+  justify-content:center;
+  gap:40px;
+  margin:10px;
+}
+.card{
+  background:#ffffff22;
+  padding:10px 20px;
+  border-radius:20px;
+  backdrop-filter:blur(5px);
+}
+#game{
+  display:grid;
+  grid-template-columns:repeat(3,120px);
+  gap:20px;
+  justify-content:center;
+  margin-top:20px;
+}
+.hole{
+  width:120px;
+  height:120px;
+  background:radial-gradient(circle at 50% 40%, #5b2c1d,#2e130b);
+  border-radius:50%;
+  position:relative;
+  overflow:hidden;
+  cursor:pointer;
+  box-shadow:inset 0 8px 15px #0008;
+}
+.mole{
+  position:absolute;
+  bottom:-100%;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:60px;
+  transition:bottom 0.2s ease;
+}
+.mole.up{
+  bottom:10px;
+}
+.hit{
+  animation:pop 0.2s forwards;
+}
+@keyframes pop{
+  0%{transform:translateX(-50%) scale(1);}
+  50%{transform:translateX(-50%) scale(1.3);}
+  100%{transform:translateX(-50%) scale(0);}
+}
+button{
+  margin-top:15px;
+  padding:10px 25px;
+  font-size:18px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+}
+#history{
+  margin-top:20px;
+  max-width:400px;
+  margin-left:auto;
+  margin-right:auto;
+  text-align:left;
+  background:#ffffff22;
+  padding:10px;
+  border-radius:10px;
+}
+</style>
+</head>
+<body>
+
+<h1>🐹 進化版もぐら叩き</h1>
+
+<div class="top-ui">
+  <div class="card">スコア: <span id="score">0</span></div>
+  <div class="card">残り時間: <span id="time">30</span></div>
+  <div class="card">ハイスコア: <span id="highscore">0</span></div>
+</div>
+
+<button id="startBtn">スタート</button>
+
+<div id="game"></div>
+
+<div id="history">
+  <strong>プレイ履歴</strong>
+  <ul id="historyList"></ul>
+</div>
+
+<script>
+const game = document.getElementById("game");
+const scoreEl = document.getElementById("score");
+const timeEl = document.getElementById("time");
+const highEl = document.getElementById("highscore");
+const historyList = document.getElementById("historyList");
+const startBtn = document.getElementById("startBtn");
+
+let score=0;
+let time=30;
+let timer=null;
+let moleTimer=null;
+let currentMole=null;
+
+const highScore = localStorage.getItem("whackHighScore") || 0;
+highEl.textContent = highScore;
+
+function createBoard(){
+  game.innerHTML="";
+  for(let i=0;i<9;i++){
+    const hole=document.createElement("div");
+    hole.classList.add("hole");
+    const mole=document.createElement("div");
+    mole.classList.add("mole");
+    mole.textContent="🐹";
+    hole.appendChild(mole);
+    hole.addEventListener("click",()=>hitMole(mole));
+    game.appendChild(hole);
+  }
+}
+
+function randomMole(){
+  const moles=document.querySelectorAll(".mole");
+  moles.forEach(m=>m.classList.remove("up"));
+  const index=Math.floor(Math.random()*moles.length);
+  moles[index].classList.add("up");
+  currentMole=moles[index];
+}
+
+function hitMole(mole){
+  if(mole===currentMole && mole.classList.contains("up")){
+    score++;
+    scoreEl.textContent=score;
+    mole.classList.remove("up");
+    mole.classList.add("hit");
+    playHitSound();
+    setTimeout(()=>mole.classList.remove("hit"),200);
+  }
+}
+
+function startGame(){
+  score=0;
+  time=30;
+  scoreEl.textContent=0;
+  timeEl.textContent=time;
+  startBtn.disabled=true;
+
+  timer=setInterval(()=>{
+    time--;
+    timeEl.textContent=time;
+    if(time<=0){
+      endGame();
+    }
+  },1000);
+
+  moleTimer=setInterval(randomMole,700);
+}
+
+function endGame(){
+  clearInterval(timer);
+  clearInterval(moleTimer);
+  startBtn.disabled=false;
+
+  if(score>highScore){
+    localStorage.setItem("whackHighScore",score);
+    highEl.textContent=score;
+  }
+
+  const li=document.createElement("li");
+  li.textContent=new Date().toLocaleTimeString()+" - "+score+"点";
+  historyList.prepend(li);
+}
+
+function playHitSound(){
+  const ctx=new(window.AudioContext||window.webkitAudioContext)();
+  const osc=ctx.createOscillator();
+  const gain=ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.value=400;
+  osc.type="square";
+  gain.gain.setValueAtTime(0.2,ctx.currentTime);
+  osc.start();
+  osc.stop(ctx.currentTime+0.1);
+}
+
+startBtn.addEventListener("click",startGame);
+createBoard();
+</script>
+
+</body>
+</html>
