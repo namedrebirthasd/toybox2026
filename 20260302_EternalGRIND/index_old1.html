@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ETERNAL GRIND EVOLUTION</title>
+        <style>
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-pink: #ff00ff;
+            --neon-gold: #ffcc00;
+            --bg-dark: #0a0a0a;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #game-container {
+            width: 400px;
+            height: 700px;
+            border: 4px solid #333;
+            border-radius: 20px;
+            position: relative;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 演出用クラス */
+        .shake { animation: shake 0.2s ease-in-out; }
+        @keyframes shake {
+            0%, 100% { transform: translate(0,0); }
+            25% { transform: translate(5px, 5px); }
+            50% { transform: translate(-5px, -5px); }
+            75% { transform: translate(5px, -5px); }
+        }
+
+        .flash-rainbow { animation: rainbow 0.5s infinite; }
+        @keyframes rainbow {
+            0% { box-shadow: 0 0 20px red; }
+            33% { box-shadow: 0 0 20px lime; }
+            66% { box-shadow: 0 0 20px blue; }
+        }
+
+        /* 画面切り替え */
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .active { display: flex; }
+
+        /* UIパーツ */
+        h1 { font-size: 2rem; color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); margin-bottom: 30px; }
+        
+        .btn {
+            background: transparent;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
+
+        .btn:hover { background: var(--neon-blue); color: black; box-shadow: 0 0 15px var(--neon-blue); }
+
+        .stat-bar { font-size: 0.9rem; margin: 5px; color: var(--neon-pink); }
+
+        /* モンスター表示エリア */
+        .monster-view {
+            width: 200px;
+            height: 200px;
+            margin: 20px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .monster-img { width: 100%; height: 100%; object-fit: contain; }
+        .placeholder-monster {
+            width: 120px; height: 120px; border-radius: 50%;
+            background: linear-gradient(45deg, var(--neon-pink), var(--neon-blue));
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+
+        /* メッセージログ */
+        #log {
+            height: 80px;
+            font-size: 0.85rem;
+            color: #ccc;
+            margin-top: 10px;
+            padding: 10px;
+            border-top: 1px solid #333;
+            width: 100%;
+        }
+
+        /* 履歴リスト */
+        #history-list {
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #111;
+            margin-top: 10px;
+            font-size: 0.7rem;
+            text-align: left;
+        }
+    </style>
+    </head>
+    <body>
+
+        <div id="game-container">
+            <div id="screen-title" class="screen active">
+                <h1>ETERNAL<br>GRIND</h1>
+                <button class="btn" onclick="startGame()">GAME START</button>
+                <div id="history-list"></div>
+            </div>
+
+            <div id="screen-select" class="screen">
+                <h3>タマゴを選択してください</h3>
+                <div style="display: flex;">
+                    <button class="btn" onclick="hatch('サイバーの卵')">🥚</button>
+                    <button class="btn" onclick="hatch('カジノの卵')">🥚</button>
+                    <button class="btn" onclick="hatch('虚無の卵')">🥚</button>
+                </div>
+            </div>
+
+            <div id="screen-main" class="screen">
+                <div id="monster-name"
+                    style="font-weight: bold; font-size: 1.2rem;">NAME</div>
+                <div id="monster-rarity"
+                    style="color: var(--neon-gold);">RARITY</div>
+                <div class="monster-view" id="monster-view">
+                    <div class="placeholder-monster"></div>
+                </div>
+
+                <div class="stat-bar" id="stat-training">Training: 0</div>
+                <div class="stat-bar" id="stat-food">Stomach: 0</div>
+
+                <div
+                    style="display: grid; grid-template-columns: 1fr 1fr; width: 100%;">
+                    <button class="btn" onclick="doAction('food')">エサ</button>
+                    <button class="btn"
+                        onclick="doAction('train')">トレーニング</button>
+                    <button class="btn" onclick="doAction('evolve')"
+                        style="grid-column: span 2; border-color: var(--neon-gold); color: var(--neon-gold);">成長
+                        (EVOLVE)</button>
+                </div>
+                <div id="log">運命を選べ...</div>
+            </div>
+
+            <div id="screen-over" class="screen">
+                <h2 style="color: red;">GAME OVER</h2>
+                <p id="over-reason"></p>
+                <button class="btn" onclick="toTitle()">タイトルに戻る</button>
+            </div>
+        </div>
+
+        <script>
+    // --- データ定義 ---
+    const MONSTER_NAMES = {
+        common: ["ネオン・スライム", "鉄屑のポチ", "バイト猫", "電子ハムスター"],
+        rare: ["輝くスロット猫", "黄金のハッカー", "超特急トカゲ", "ダイヤモンド・バグ"],
+        legendary: ["終焉のアルゴリズム", "ジャックポット・神", "銀河の給仕長"]
+    };
+    
+
+    const DEATH_MESSAGES = [
+        "はうっかり暴飲暴食をしてしまい、しにました。",
+        "はトレーニングし過ぎて、筋肉が爆発してしにました。",
+        "は進化の負荷に耐えきれず、電子の塵となりました。",
+        "は突然の虚無感に襲われ、そのまま消滅しました。"
+    ];
+
+    let gameState = {
+        currentType: "CASINO", // 初期系統
+        level: 1,
+        name: "",
+        isDead: false,
+        
+        // 隠しパラメータ (将来のバトル用)
+        stats: {
+            hp: 100,
+            atk: 10,
+            def: 10,
+            luk: 5
+        },
+        
+        // 育成中の一時ステータス
+        trainingCount: 0,
+        foodCount: 0,
+        
+        // ★こちらを残す：保存された履歴を読み込み、なければ空配列[]にする
+        history: JSON.parse(localStorage.getItem('grind_history') || '[]')  
+    };
+
+
+
+
+
+    // --- 音声再生 (パスが通っていれば鳴る) ---
+    function playSound(type) {
+        let audio = new Audio(`sounds/${type}.mp3`);
+        audio.play().catch(() => console.log("Sound enabled after interaction or file missing"));
+    }
+
+    // --- システム関数 ---
+    function updateLog(msg) {
+        const log = document.getElementById('log');
+        log.innerHTML = msg;
+        document.getElementById('game-container').classList.add('shake');
+        setTimeout(() => document.getElementById('game-container').classList.remove('shake'), 200);
+    }
+
+    function startGame() {
+        showScreen('screen-select');
+        renderHistory();
+    }
+
+    function hatch(eggName) {
+        gameState.name = "生まれたてのナニカ";
+        gameState.level = 1;
+        gameState.training = 0;
+        gameState.food = 0;
+        gameState.rarity = "COMMON";
+        showScreen('screen-main');
+        updateUI();
+        updateLog(`${eggName}から何かが生まれた！`);
+    }
+
+    function doAction(type) {
+        if(Math.random() < 0.05) { // 5%の確率で突然死
+            die(type === 'food' ? `${gameState.name}${DEATH_MESSAGES[0]}` : `${gameState.name}${DEATH_MESSAGES[1]}`);
+            return;
+        }
+
+        if(type === 'food') {
+            gameState.food++;
+            updateLog(`${gameState.name}は夢中で食べた！(生存率UP)`);
+        } else if(type === 'train') {
+            gameState.training++;
+            updateLog(`${gameState.name}は必死に鍛えた！(レア度UP)`);
+        } else if(type === 'evolve') {
+            evolve();
+        }
+        updateUI();
+    }
+
+    function evolve() {
+        // 進化失敗確率: 基本20% - 餌回数*5% (最低5%)
+        let failProb = Math.max(0.05, 0.20 - (gameState.food * 0.05));
+        
+        if(Math.random() < failProb) {
+            die(`${gameState.name}は成長に失敗しました。もうこれ以上成長できないようです。`);
+            return;
+        }
+
+        // レア度判定
+        let rareProb = 0.1 + (gameState.training * 0.1); // トレーニングで上昇
+        let newRarity = "common";
+        if(Math.random() < (rareProb * 0.2)) {
+            newRarity = "legendary";
+            triggerSpecialEffect('rainbow');
+        } else if(Math.random() < rareProb) {
+            newRarity = "rare";
+            triggerSpecialEffect('dark');
+        }
+
+        const pool = MONSTER_NAMES[newRarity];
+        gameState.name = pool[Math.floor(Math.random() * pool.length)];
+        gameState.rarity = newRarity.toUpperCase();
+        gameState.level++;
+        gameState.food = 0; // リセット
+        gameState.training = 0;
+
+        updateLog(`おめでとう！ ${gameState.name} に進化した！`);
+        updateUI();
+    }
+
+    function triggerSpecialEffect(type) {
+        const container = document.getElementById('game-container');
+        if(type === 'rainbow') {
+            container.classList.add('flash-rainbow');
+            setTimeout(() => container.classList.remove('flash-rainbow'), 2000);
+        }
+    }
+
+    function die(reason) {
+        gameState.isDead = true;
+        document.getElementById('over-reason').innerText = reason + "\nそして、天寿をまっとうしましたとさ。";
+        
+        // 履歴保存
+        const entry = {
+            date: new Date().toLocaleString(),
+            name: gameState.name,
+            level: gameState.level
+        };
+        gameState.history.unshift(entry);
+        localStorage.setItem('grind_history', JSON.stringify(gameState.history.slice(0, 20)));
+        
+        showScreen('screen-over');
+    }
+
+    function toTitle() {
+        showScreen('screen-title');
+        renderHistory();
+    }
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function updateUI() {
+        document.getElementById('monster-name').innerText = gameState.name;
+        document.getElementById('monster-rarity').innerText = `[${gameState.rarity}] LV.${gameState.level}`;
+        document.getElementById('stat-training').innerText = `Training: ${gameState.training}`;
+        document.getElementById('stat-food').innerText = `Stomach: ${gameState.food}`;
+    }
+
+    function renderHistory() {
+        const list = document.getElementById('history-list');
+        list.innerHTML = "<strong>ーー 過去の記録 ーー</strong><br>";
+        gameState.history.forEach(h => {
+            list.innerHTML += `${h.date}: ${h.name} (Lv.${h.level})<br>`;
+        });
+    }
+
+
+
+    /** 2026/03/03 6:44 **/
+
+    // --- ゲーム設定スイッチ ---
+const CONFIG = {
+    IS_INFINITE_MODE: false, // trueなら無限、falseなら有限
+    MAX_LEVEL: 5,            // 有限モード時の最大レベル
+    SLOT_CHANCE: 0.1,        // スロット演出が発生する基本確率（仮）
+};
+
+// --- モンスター系統データ (将来の拡張用) ---
+const MONSTER_MASTER = {
+    // 1. カジノ・ネコ系（ギャンブル特化）
+    CASINO: [
+        { lv: 1, name: "捨てられた子猫", emoji: "🐱", rarity: "COMMON" },
+        { lv: 2, name: "路地裏のチンピラ猫", emoji: "🕶️", rarity: "COMMON" },
+        { lv: 3, name: "カジノの用心棒猫", emoji: "👔", rarity: "RARE" },
+        { lv: 4, name: "スロットマシン・キャット", emoji: "🎰", rarity: "RARE" },
+        { lv: 5, name: "ギャンブルゴッド・キャット", emoji: "💰", rarity: "LEGENDARY" }
+    ],
+    // 2. サイバー系（技術・メカ特化）
+    CYBER: [
+        { lv: 1, name: "ビット・タマゴ", emoji: "🥚", rarity: "COMMON" },
+        { lv: 2, name: "コード・ベイビー", emoji: "👾", rarity: "COMMON" },
+        { lv: 3, name: "プロト・ドロイド", emoji: "🤖", rarity: "RARE" },
+        { lv: 4, name: "サイバー・ガーディアン", emoji: "🛡️", rarity: "RARE" },
+        { lv: 5, name: "機神：オメガ", emoji: "👑", rarity: "LEGENDARY" }
+    ],
+    // 3. スライム系（王道・変化特化）
+    SLIME: [
+        { lv: 1, name: "ベビースライム", emoji: "💧", rarity: "COMMON" },
+        { lv: 2, name: "スライム", emoji: "🔵", rarity: "COMMON" },
+        { lv: 3, name: "キングスライム", emoji: "👑", rarity: "RARE" },
+        { lv: 4, name: "メタルスライム", emoji: "💎", rarity: "RARE" },
+        { lv: 5, name: "プラチナキング", emoji: "✨", rarity: "LEGENDARY" }
+    ]
+    // 将来的に "VOID", "BEAST" など追加可能
+};
+
+
+if (version1 = false){
+    // --- 進化ロジック ---
+    function executeEvolution() {
+        // 1. 終了判定
+        if (!CONFIG.IS_INFINITE_MODE && gameState.level >= CONFIG.MAX_LEVEL) {
+            finishGame("世界を統べる伝説の存在となり、物語は幕を閉じた。");
+            return;
+        }
+
+        // 2. 失敗判定 (エサ回数で緩和)
+        let failRate = Math.max(0.05, 0.3 - (gameState.foodCount * 0.05));
+        if (Math.random() < failRate) {
+            die("進化のエネルギーに耐えられず、体が弾け飛んだ！");
+            return;
+        }
+
+        // 3. パラメータ上昇 (共通ロジック)
+        gameState.stats.hp += Math.floor(Math.random() * 50) + 20;
+        gameState.stats.atk += Math.floor(Math.random() * 10) + 5;
+        gameState.stats.def += Math.floor(Math.random() * 10) + 5;
+        gameState.stats.luk += gameState.trainingCount; // 鍛えた分だけ運気UP
+
+        // 4. 次の姿を決定
+        gameState.level++;
+        const nextData = getMonsterData(gameState.currentType, gameState.level);
+        
+        if (nextData) {
+            gameState.name = nextData.name;
+            // 演出呼び出し
+            playEvolutionEffect(nextData.rarity === "RARE");
+        } else {
+            // データがない場合(無限モード時など)は自動生成
+            gameState.name = `超越種 LV.${gameState.level}`;
+        }
+
+        // リセット
+        gameState.trainingCount = 0;
+        gameState.foodCount = 0;
+        updateUI();
+    }
+}
+
+
+
+function executeEvolution() {
+    // 1. 最大レベルチェック（有限モード時）
+    if (!CONFIG.IS_INFINITE_MODE && gameState.level >= CONFIG.MAX_LEVEL) {
+        gameClear(); // クリア演出へ
+        return;
+    }
+
+    // 2. 死亡判定（進化失敗）
+    // トレーニング回数が多いほどレア度は上がるが、エサが少ないと進化失敗（即死）しやすくなるバランス
+    let survivalRate = 0.7 + (gameState.foodCount * 0.05); // エサ1回につき5%生存率UP
+    if (Math.random() > survivalRate) {
+        die(`${gameState.name}は進化のエネルギーに耐えきれず、消滅しました。`);
+        return;
+    }
+
+    // 3. レベルアップとデータ取得
+    const nextLevel = gameState.level + 1;
+    const currentPath = MONSTER_MASTER[gameState.currentType];
+    const nextData = currentPath.find(m => m.lv === nextLevel);
+
+    if (nextData) {
+        // --- 成功時の処理 ---
+        gameState.level = nextLevel;
+        gameState.name = nextData.name;
+        gameState.rarity = nextData.rarity;
+
+        // 隠しステータスのランダム上昇（将来のバトルのため）
+        gameState.stats.hp += Math.floor(Math.random() * 50) + 10;
+        gameState.stats.atk += Math.floor(Math.random() * 5) + (gameState.trainingCount); // 訓練反映
+        gameState.stats.def += Math.floor(Math.random() * 5);
+
+        // 演出：レア度によってエフェクトを変える
+        if (nextData.rarity === "LEGENDARY") {
+            triggerEffect("RAINBOW_FLASH"); // 虹色＋暗転
+        } else if (nextData.rarity === "RARE") {
+            triggerEffect("GOLD_SHINE"); // 金色の輝き
+        } else {
+            triggerEffect("NORMAL_EVO"); // 通常進化
+        }
+
+        // 育成カウンタリセット
+        gameState.trainingCount = 0;
+        gameState.foodCount = 0;
+
+        updateUI();
+        updateLog(`進化成功！ ${gameState.name} になった！`);
+    } else {
+        // 次のデータがない場合（無限モードなど）のフォールバック
+        if (CONFIG.IS_INFINITE_MODE) {
+            generateInfiniteMonster(); // 自動生成メソッドへ
+        } else {
+            gameClear(); 
+        }
+    }
+}
+
+// データ取得用ヘルパー
+function getMonsterData(type, lv) {
+    const list = MONSTER_MASTER[type];
+    return list.find(m => m.lv === lv) || null;
+}
+
+// 履歴に新しいデータを追加して、ブラウザに保存する処理（2026/03/03 07:06）
+function saveToHistory(record) {
+    gameState.history.unshift(record); // 最新を一番上に
+    // 最大20件くらいに絞って保存（重くならないように）
+    const limitedHistory = gameState.history.slice(0, 20);
+    localStorage.setItem('grind_history', JSON.stringify(limitedHistory));
+}
+
+    renderHistory();
+</script>
+
+    </body>
+</html>

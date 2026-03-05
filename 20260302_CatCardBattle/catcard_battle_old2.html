@@ -231,162 +231,19 @@ body::after{
   display:flex;align-items:center;justify-content:center;font-size:1.3rem;
 }
 
-/* CENTER VS column - slim divider only */
+/* CENTER VS column */
 #vs-col{
-  width:50px;flex-shrink:0;
+  width:70px;flex-shrink:0;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:6px;padding:4px 2px;position:relative;
-  border-left:1px solid rgba(255,215,0,.08);
-  border-right:1px solid rgba(255,215,0,.08);
+  gap:8px;padding:4px;
 }
 .vs-text{
-  font-family:'Boogaloo',cursive;font-size:1.1rem;color:var(--gold);
-  text-shadow:0 0 12px rgba(255,215,0,.6);
-  writing-mode:vertical-rl;letter-spacing:3px;
+  font-family:'Boogaloo',cursive;font-size:2.2rem;color:var(--gold);
+  text-shadow:0 0 20px rgba(255,215,0,.7);
 }
 #turn-badge{
-  font-family:'Boogaloo',cursive;font-size:.65rem;color:var(--gold);
-  border:1px solid rgba(255,215,0,.3);padding:3px 5px;border-radius:4px;
-  text-align:center;background:rgba(10,10,15,.85);white-space:nowrap;
-  writing-mode:vertical-rl;
-}
-/* ── BATTLE STAGE OVERLAY (fixed, カラム跨ぎ) ── */
-#battle-stage{
-  position:fixed;
-  /* positioned dynamically by JS to sit between the two columns */
-  top:0;left:0;
-  pointer-events:none;
-  z-index:200;
-  display:flex;align-items:center;justify-content:center;
-  gap:clamp(8px,2vw,20px);
-}
-.stage-card{
-  width:clamp(130px,18vw,200px);
-  height:clamp(177px,24.5vw,273px);
-  border-radius:12px;background:var(--panel);
-  border:3px solid var(--border);
-  display:flex;align-items:center;justify-content:center;
-  font-size:clamp(3rem,6vw,5rem);
-  overflow:hidden;position:relative;
-  box-shadow:0 12px 40px rgba(0,0,0,.8);
-  flex-shrink:0;
-  transition:box-shadow .3s;
-}
-.stage-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:9px;}
-.stage-card .sc-name{
-  position:absolute;bottom:0;left:0;right:0;
-  background:linear-gradient(transparent,rgba(0,0,0,.92));
-  font-family:'Boogaloo',cursive;font-size:clamp(.55rem,1vw,.85rem);
-  color:white;text-align:center;padding:18px 4px 5px;letter-spacing:1px;
-}
-.stage-card.sc-p1{border-color:rgba(0,229,255,.7);box-shadow:0 0 28px rgba(0,229,255,.35),0 12px 40px rgba(0,0,0,.8);}
-.stage-card.sc-p2{border-color:rgba(255,77,187,.7);box-shadow:0 0 28px rgba(255,77,187,.35),0 12px 40px rgba(0,0,0,.8);}
-
-/* Shake on hit */
-.stage-card.hit-shake{animation:scHit .35s ease-out;}
-
-/* Hit flash - 赤点滅 */
-.stage-card.hit-flash{animation:scFlash .4s ease-out;}
-@keyframes scFlash{
-  0%  {box-shadow:0 0 0px  rgba(255,50,50,0),   inset 0 0 0px  rgba(255,50,50,0);}
-  20% {box-shadow:0 0 60px rgba(255,50,50,.95),  inset 0 0 40px rgba(255,50,50,.5);}
-  50% {box-shadow:0 0 30px rgba(255,50,50,.6),   inset 0 0 20px rgba(255,50,50,.3);}
-  100%{box-shadow:0 0 0px  rgba(255,50,50,0),    inset 0 0 0px  rgba(255,50,50,0);}
-}
-
-/* KO状態 - グレーモノクロ */
-.stage-card.ko-dead{
-  filter:grayscale(1) brightness(.55);
-  transition:filter .4s;
-}
-
-/* KO ❌ オーバーレイ */
-.stage-card .ko-x{
-  position:absolute;inset:0;
-  display:flex;align-items:center;justify-content:center;
-  pointer-events:none;opacity:0;
-  z-index:10;
-}
-.stage-card .ko-x::before,.stage-card .ko-x::after{
-  content:'';position:absolute;
-  width:88%;height:10px;border-radius:5px;
-  background:#e53935;box-shadow:0 0 18px rgba(229,57,53,.8);
-}
-.stage-card .ko-x::before{transform:rotate(45deg);}
-.stage-card .ko-x::after {transform:rotate(-45deg);}
-.stage-card.ko-dead .ko-x{animation:koXIn .35s .15s cubic-bezier(.34,1.56,.64,1) forwards;}
-@keyframes koXIn{0%{opacity:0;transform:scale(.3);}100%{opacity:1;transform:scale(1);}}
-
-/* KO / CHANGE テキストオーバーレイ */
-#ko-banner{
-  position:fixed;z-index:600;pointer-events:none;
-  left:50%;transform:translateX(-50%);
-  font-family:'Boogaloo',cursive;letter-spacing:6px;
-  text-align:center;white-space:nowrap;
-  opacity:0;
-}
-#ko-banner.show-ko{animation:bannerKO 1.1s ease-out forwards;}
-@keyframes bannerKO{
-  0%  {opacity:0;transform:translateX(-50%) scale(.4) rotate(-8deg);}
-  18% {opacity:1;transform:translateX(-50%) scale(1.15) rotate(2deg);}
-  30% {transform:translateX(-50%) scale(1) rotate(0);}
-  75% {opacity:1;}
-  100%{opacity:0;transform:translateX(-50%) scale(1.05);}
-}
-#ko-banner.show-change{animation:bannerChange .9s ease-out forwards;}
-@keyframes bannerChange{
-  0%  {opacity:0;transform:translateX(-50%) translateY(20px);}
-  20% {opacity:1;transform:translateX(-50%) translateY(0);}
-  70% {opacity:1;}
-  100%{opacity:0;}
-}
-@keyframes scHit{
-  0%  {transform:translateX(0) scale(1);}
-  20% {transform:translateX(var(--hx,12px)) scale(.96);}
-  50% {transform:translateX(calc(var(--hx,12px) * -.7)) scale(1.02);}
-  100%{transform:translateX(0) scale(1);}
-}
-
-/* Attack rush + afterimage */
-.stage-card.rush-p1{animation:rushP1 .45s ease-out;}
-@keyframes rushP1{
-  0%  {transform:translateX(0) scale(1);}
-  35% {transform:translateX(60px) scale(1.08);}
-  55% {transform:translateX(55px) scale(1.06);}
-  100%{transform:translateX(0) scale(1);}
-}
-.stage-card.rush-p2{animation:rushP2 .45s ease-out;}
-@keyframes rushP2{
-  0%  {transform:translateX(0) scale(1);}
-  35% {transform:translateX(-60px) scale(1.08);}
-  55% {transform:translateX(-55px) scale(1.06);}
-  100%{transform:translateX(0) scale(1);}
-}
-
-/* Afterimage ghost cards */
-.afterimage{
-  position:fixed;z-index:199;pointer-events:none;
-  border-radius:12px;overflow:hidden;
-  animation:afterFade var(--af-dur,.5s) ease-out forwards;
-  border:2px solid var(--af-col,rgba(0,229,255,.5));
-}
-.afterimage img{width:100%;height:100%;object-fit:cover;}
-.afterimage .af-emoji{
-  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
-  font-size:2.5rem;
-}
-@keyframes afterFade{
-  0%  {opacity:.55;transform:translateX(0) scale(1);}
-  100%{opacity:0;  transform:translateX(var(--af-tx,0)) scale(.85);}
-}
-
-/* Stage VS label */
-#stage-vs{
-  font-family:'Boogaloo',cursive;font-size:1.6rem;color:var(--gold);
-  text-shadow:0 0 16px rgba(255,215,0,.8);
-  background:rgba(10,10,15,.9);border:1px solid rgba(255,215,0,.3);
-  padding:4px 10px;border-radius:6px;z-index:201;position:relative;
-  flex-shrink:0;
+  font-family:'Boogaloo',cursive;font-size:.75rem;color:var(--gold);
+  border:1px solid rgba(255,215,0,.3);padding:3px 6px;border-radius:4px;text-align:center;
 }
 
 /* Battle log */
@@ -416,36 +273,24 @@ body::after{
 .cbtn.quit:hover{background:rgba(255,255,255,.05);box-shadow:none;}
 
 /* ════════════════════
-   SKILL CUTIN - 完全JS制御版
+   SKILL CUTIN
 ════════════════════ */
 #skill-cutin{
-  position:fixed;inset:0;z-index:500;pointer-events:none;
-  opacity:0;
+  position:fixed;inset:0;z-index:500;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:rgba(0,0,0,.93);backdrop-filter:blur(10px);
-  background-image:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.12) 3px,rgba(0,0,0,.12) 6px);
+  pointer-events:none;opacity:0;
+  background:rgba(0,0,0,.88);backdrop-filter:blur(6px);
 }
-#cutin-char-bg{
-  position:absolute;inset:0;
-  display:flex;align-items:center;justify-content:center;
-  pointer-events:none;
-}
-#cutin-char-emoji{ font-size:clamp(8rem,20vw,13rem); line-height:1; }
-#cutin-char-bg img{
-  position:absolute;
-  width:min(52vw,300px);height:min(52vw,300px);
-  border-radius:14px;object-fit:cover;
-  filter:saturate(1.5) brightness(1.15);
-  display:none;
-}
-#cutin-text-wrap{
-  position:absolute;bottom:10%;left:0;right:0;
-  display:flex;flex-direction:column;align-items:center;gap:8px;
-  pointer-events:none;
-}
-#cutin-cname{ font-family:'Boogaloo',cursive;font-size:clamp(1rem,3vw,1.6rem);color:rgba(255,255,255,.9);letter-spacing:5px; }
-#cutin-sname{ font-family:'Boogaloo',cursive;font-size:clamp(2.4rem,8vw,5.5rem);letter-spacing:5px;line-height:1;text-shadow:0 3px 8px rgba(0,0,0,.95); }
-#cutin-desc{ font-size:clamp(.82rem,1.6vw,1.05rem);color:rgba(255,255,255,.85);letter-spacing:2px;background:rgba(0,0,0,.65);padding:6px 20px;border-radius:20px; }
+#skill-cutin.show{animation:cutinAnim .95*2s ease-out forwards;}
+@keyframes cutinAnim{0%{opacity:0;}8%{opacity:1;}72%{opacity:1;}100%{opacity:0;}}
+#skill-cutin::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px);pointer-events:none;}
+#cutin-emoji{font-size:5rem;animation:cspin .6s ease-out;}
+@keyframes cspin{0%{transform:scale(0) rotate(-180deg);}100%{transform:scale(1) rotate(0deg);}}
+#cutin-cname{font-family:'Boogaloo',cursive;font-size:clamp(1.2rem,4vw,2.2rem);color:white;letter-spacing:3px;text-shadow:0 0 30px var(--cc,#b57bee);animation:cslide .4s ease-out;margin:6px 0;}
+@keyframes cslide{0%{transform:translateX(-80px);opacity:0;}100%{transform:translateX(0);opacity:1;}}
+#cutin-sname{font-family:'Boogaloo',cursive;font-size:clamp(1.8rem,6vw,4rem);color:var(--cc,#b57bee);text-shadow:0 0 40px var(--cc,#b57bee),0 0 80px rgba(181,123,238,.4);letter-spacing:4px;animation:czoom .5s cubic-bezier(.34,1.56,.64,1);}
+@keyframes czoom{0%{transform:scale(.2) rotate(-8deg);opacity:0;}100%{transform:scale(1) rotate(0);opacity:1;}}
+#cutin-desc{font-size:.85rem;color:rgba(255,255,255,.65);margin-top:8px;letter-spacing:2px;}
 
 /* ════════════════════
    DMG FLOATERS
@@ -488,25 +333,18 @@ body::after{
 @keyframes pex{0%{transform:translate(0,0) scale(1);opacity:1;}100%{transform:translate(var(--tx,0),var(--ty,-50px)) scale(0);opacity:0;}}
 
 #bgm-btn{position:fixed;top:8px;right:8px;z-index:2000;background:rgba(255,255,255,.1);border:1px solid var(--border);border-radius:50%;width:36px;height:36px;font-size:1rem;cursor:pointer;color:white;}
-/* BUILD: 2026-03-03 22:01:09 */
 </style>
 </head>
 <body>
 <button id="bgm-btn" onclick="toggleBGM()">🎵</button>
 <div id="hit-overlay"></div>
 <div id="decide-flash"></div>
-<div id="ko-banner"></div>
 <div id="skill-cutin">
-  <div id="cutin-char-bg">
-    <div id="cutin-char-emoji"></div>
-  </div>
-  <div id="cutin-text-wrap">
-    <div id="cutin-cname"></div>
-    <div id="cutin-sname"></div>
-    <div id="cutin-desc"></div>
-  </div>
+  <div id="cutin-emoji"></div>
+  <div id="cutin-cname"></div>
+  <div id="cutin-sname"></div>
+  <div id="cutin-desc"></div>
 </div>
-<div id="effect-burst"><div id="effect-burst-ring"></div></div>
 
 <!-- ═══ TITLE ═══ -->
 <div id="title-screen" class="screen">
@@ -533,21 +371,6 @@ body::after{
     </div>
   </div>
   <div id="draft-status">シャッフル中…</div>
-</div>
-
-<!-- ═══ BATTLE STAGE OVERLAY ═══ -->
-<div id="battle-stage">
-  <div class="stage-card sc-p1" id="sc-p1">
-    <span id="sc-em-p1">🐱</span>
-    <span class="sc-name" id="sc-name-p1"></span>
-    <div class="ko-x" id="ko-x-p1"></div>
-  </div>
-  <div id="stage-vs">VS</div>
-  <div class="stage-card sc-p2" id="sc-p2">
-    <span id="sc-em-p2">🐱</span>
-    <span class="sc-name" id="sc-name-p2"></span>
-    <div class="ko-x" id="ko-x-p2"></div>
-  </div>
 </div>
 
 <!-- ═══ BATTLE ═══ -->
@@ -582,10 +405,10 @@ body::after{
       <div class="bench-cards" id="bench-p1"></div>
     </div>
 
-    <!-- VS center divider -->
+    <!-- VS center -->
     <div id="vs-col">
       <div class="vs-text">VS</div>
-      <div id="turn-badge">ターン <span id="turn-num">1</span></div>
+      <div id="turn-badge">ターン<br><span id="turn-num">1</span></div>
     </div>
 
     <!-- P2 column -->
@@ -726,7 +549,6 @@ function showScreen(id){
 }
 function goTitle(){
   gameRunning=false;autoMode=false;clearTimeout(autoTimer);
-  document.getElementById('battle-stage').style.display='none';
   showScreen('title-screen');playBGM('bgm-title');updateHi();
 }
 
@@ -808,11 +630,11 @@ async function beginDraft(mode){
     df.style.opacity='.6';
     setTimeout(()=>df.style.opacity='0',300);
 
-    if(pick<2)await delay(900);
+    if(pick<2)await delay(900*2);
   }
 
   document.getElementById('draft-status').textContent='⚔️ バトル開始！';
-  await delay(800);
+  await delay(800*2);
 
   // Launch battle with drafted cards
   startGameWithDecks(p1Cards,p2Cards);
@@ -892,10 +714,6 @@ function startGameWithDecks(d1,d2){
   p2State=p2Deck.shift(); p2State.effects=newFx();
 
   renderAll();
-  // Show and position the overlay stage
-  const stage=document.getElementById('battle-stage');
-  stage.style.display='flex';
-  requestAnimationFrame(()=>requestAnimationFrame(positionBattleStage));
   addLog('y','⚔️ バトル開始！ 3枚のカードで戦え！');
 }
 
@@ -913,8 +731,6 @@ function renderAll(){
 function renderFighter(s,card){
   if(!card){
     ['cn','ct','hp-num','atk','sk','em'].forEach(p=>{ const e=document.getElementById(p+'-'+s); if(e)e.textContent=p==='em'?'💀':'—'; });
-    const sem=document.getElementById('sc-em-'+s);if(sem)sem.textContent='💀';
-    const snm=document.getElementById('sc-name-'+s);if(snm)snm.textContent='';
     return;
   }
   document.getElementById('cn-'+s).textContent=card.name;
@@ -924,28 +740,14 @@ function renderFighter(s,card){
   document.getElementById('em-'+s).textContent=card.emoji;
   document.getElementById('atype-'+s).textContent=card.type;
 
-  // Sync stage card
-  const sc=document.getElementById('sc-'+s);
-  const sem=document.getElementById('sc-em-'+s);
-  const snm=document.getElementById('sc-name-'+s);
-  if(sem)sem.textContent=card.emoji;
-  if(snm)snm.textContent=card.name;
-
-  // Helper to load image into a container
-  function loadImg(container, emojiEl){
-    let img=container.querySelector('img');
-    if(!img){img=document.createElement('img');img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;';container.appendChild(img);}
-    img.src=`images/${card.id}.png`;
-    img.onerror=()=>{img.style.display='none';emojiEl.style.display='block';};
-    img.onload=()=>{emojiEl.style.display='none';img.style.display='block';};
-  }
-
-  // Small art panel
+  // Image (for future)
   const art=document.getElementById('art-'+s);
-  loadImg(art, document.getElementById('em-'+s));
-
-  // Stage card
-  if(sc && sem) loadImg(sc, sem);
+  let img=art.querySelector('img');
+  if(!img){img=document.createElement('img');img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:4px;';art.appendChild(img);}
+  img.src=`images/${card.id}.png`;
+  const em=document.getElementById('em-'+s);
+  img.onerror=()=>{img.style.display='none';em.style.display='block';};
+  img.onload=()=>{em.style.display='none';img.style.display='block';};
 
   updateHP(s,card);
 }
@@ -982,7 +784,7 @@ async function executeTurn(){
   addLog('y',`── ターン ${turnCount} ──`);
   await doAttack(p1State,p2State,'p1','p2');
   if(p2State.hp<=0){await handleKO('p2');return;}
-  await delay(800);
+  await delay(480);
   await doAttack(p2State,p1State,'p2','p1');
   if(p1State.hp<=0){await handleKO('p1');return;}
   tickFx(p1State);tickFx(p2State);
@@ -1011,21 +813,10 @@ async function doAttack(atk,def,as,ds){
     addLog('a',`${atk.name} が ${def.name} に ${dmg}ダメージ`);
     dmgFloat(`-${dmg}`,'normal',ds);
   }
-  // Rush + afterimage on attacker stage card
-  rushAttack(as);
-  // Hit shake on defender
-  const scD=document.getElementById('sc-'+ds);
-  if(scD){
-    scD.style.setProperty('--hx', as==='p1'?'14px':'-14px');
-    scD.classList.remove('hit-shake','hit-flash');
-    void scD.offsetWidth;
-    scD.classList.add('hit-shake','hit-flash');
-  }
-  // Small panel shake too
   document.getElementById('ac-'+as).classList.add('attacking');
-  setTimeout(()=>{document.getElementById('ac-'+as).classList.remove('attacking');if(scD)scD.classList.remove('hit-shake');},380);
+  setTimeout(()=>document.getElementById('ac-'+as).classList.remove('attacking'),260);
   playSE('se-damage');beep('damage');
-  updateHP(ds,def);await delay(750);
+  updateHP(ds,def);await delay(380);
 }
 
 async function triggerSkill(atk,def,as,ds){
@@ -1049,10 +840,7 @@ async function triggerSkill(atk,def,as,ds){
     case'multi_hit':{let tot=0;for(let i=0;i<3;i++){const d=Math.max(1,a+Math.floor((Math.random()-.3)*2));def.hp=Math.max(0,def.hp-d);tot+=d;dmgFloat(`-${d}`,'normal',ds);await delay(180);}addLog('s',`  ↳ 3連撃！合計${tot}ダメ！`);hitFlash();particles(ds);break;}
     case'full_buff':atk.hp=Math.min(atk.maxHp,atk.hp+4);atk.effects.atkBuff=(atk.effects.atkBuff||0)+2;addLog('s','  ↳ HP+4 ATK+2（フルサービス）');dmgFloat('🛎️+HP+ATK','heal',as);beep('heal');updateHP(as,atk);break;
   }
-  updateHP(ds,def);
-  // Effect burst ring
-  triggerBurst(sk.col);
-  await delay(600);
+  updateHP(ds,def);await delay(280);
 }
 
 function tickFx(c){
@@ -1064,79 +852,23 @@ function tickFx(c){
 
 async function handleKO(deadSide){
   const dead=deadSide==='p1'?p1State:p2State;
-  const hasNext=(deadSide==='p2'&&p2Deck.length>0)||(deadSide==='p1'&&p1Deck.length>0);
-
   beep('ko');playSE('se-ko');
   addLog('k',`💀 ${dead.name} がやられた！`);
-  hitFlash();
-
-  // ステージカードをKO状態に（グレー＋❌）
-  stageKO(deadSide);
-
-  // K.O.バナー表示
-  showKOBanner('K.O.!!', '#ff3a3a', deadSide);
-  await delay(1200);
-
-  if(hasNext){
-    // CHANGE! バナー
-    showKOBanner('CHANGE!', '#FFD700', deadSide);
-    await delay(900);
-  } else {
-    await delay(300);
-  }
-
-  // KO状態クリア
-  clearStageKO(deadSide);
-
+  dmgFloat('K.O.!!','crit',deadSide);hitFlash();
+  await delay(750);
+  const p1m=p1Deck.length>0, p2m=p2Deck.length>0;
   if(deadSide==='p2'){
-    if(p2Deck.length>0){p2State=p2Deck.shift();p2State.effects=newFx();addLog('y','▶ 次のカードが登場！');renderAll();}
+    if(p2m){p2State=p2Deck.shift();p2State.effects=newFx();addLog('y','▶ 次のカードが登場！');renderAll();}
     else{endGame('p1');return;}
   }else{
-    if(p1Deck.length>0){p1State=p1Deck.shift();p1State.effects=newFx();addLog('y','▶ 次のカードが登場！');renderAll();}
+    if(p1m){p1State=p1Deck.shift();p1State.effects=newFx();addLog('y','▶ 次のカードが登場！');renderAll();}
     else{endGame('p2');return;}
   }
   turnCount++;renderAll();
 }
 
-function stageKO(side){
-  const sc=document.getElementById('sc-'+side);
-  if(!sc)return;
-  sc.classList.add('ko-dead');
-}
-function clearStageKO(side){
-  const sc=document.getElementById('sc-'+side);
-  if(!sc)return;
-  sc.classList.remove('ko-dead');
-}
-function showKOBanner(text, color, side){
-  const sc=document.getElementById('sc-'+side);
-  const banner=document.getElementById('ko-banner');
-  if(!banner)return;
-
-  // バナーをカードの中央付近に配置
-  let top='50%';
-  if(sc){
-    const r=sc.getBoundingClientRect();
-    top=(r.top+r.height/2-30)+'px';
-  }
-  banner.style.cssText=`
-    position:fixed;z-index:600;pointer-events:none;
-    left:50%;top:${top};
-    font-family:'Boogaloo',cursive;letter-spacing:6px;
-    font-size:clamp(2.5rem,7vw,4.5rem);
-    color:${color};
-    text-shadow:0 0 30px ${color},0 0 60px ${color},3px 3px 0 rgba(0,0,0,.8);
-    white-space:nowrap;opacity:0;
-  `;
-  banner.textContent=text;
-  banner.classList.remove('show-ko','show-change');
-  void banner.offsetWidth;
-  banner.classList.add(text==='K.O.!!'?'show-ko':'show-change');
-}
-
 function endGame(winner){
   gameRunning=false;autoMode=false;clearTimeout(autoTimer);
-  document.getElementById('battle-stage').style.display='none';
   const isP1=winner==='p1';
   let ttl,cls;
   if(gameMode==='cpu'){ttl=isP1?'🏆 YOU WIN!':'💀 GAME OVER';cls=isP1?'rwin':'rlose';}
@@ -1166,152 +898,22 @@ function toggleAuto(){
 async function runAuto(){
   if(!autoMode||!gameRunning)return;
   await doNextTurn();
-  if(gameRunning&&autoMode)autoTimer=setTimeout(runAuto,1800);
+  if(gameRunning&&autoMode)autoTimer=setTimeout(runAuto,1100);
 }
 
 /* ═══════════════════════════════════
    CUTIN
 ═══════════════════════════════════ */
 function showCutin(card,sk){
-  return new Promise(function(resolve){
-    var col=sk.col||'#b57bee';
-    var el=document.getElementById('skill-cutin');
-    var charBg=document.getElementById('cutin-char-bg');
-    var emojiEl=document.getElementById('cutin-char-emoji');
-    var cnameEl=document.getElementById('cutin-cname');
-    var snameEl=document.getElementById('cutin-sname');
-    var descEl=document.getElementById('cutin-desc');
-
-    /* 1) 全状態を即時リセット（transitionなし） */
-    el.style.transition='none';
-    el.style.opacity='0';
-    el.style.backgroundImage=
-      'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.12) 3px,rgba(0,0,0,.12) 6px),'+
-      'radial-gradient(ellipse at 50% 45%,'+col+' 0%,transparent 65%)';
-
-    cnameEl.style.cssText='font-family:Boogaloo,cursive;font-size:clamp(1rem,3vw,1.6rem);letter-spacing:5px;'+
-      'color:rgba(255,255,255,.9);text-shadow:0 0 20px '+col+',0 2px 6px rgba(0,0,0,.9);'+
-      'opacity:0;transform:translateX(-40px);transition:none;';
-    snameEl.style.cssText='font-family:Boogaloo,cursive;font-size:clamp(2.4rem,8vw,5.5rem);letter-spacing:5px;line-height:1;'+
-      'color:'+col+';text-shadow:0 0 30px '+col+',0 0 70px '+col+',0 3px 8px rgba(0,0,0,.95);'+
-      'opacity:0;transform:scale(.15) rotate(-8deg);transition:none;';
-    descEl.style.cssText='font-size:clamp(.82rem,1.6vw,1.05rem);color:rgba(255,255,255,.85);letter-spacing:2px;'+
-      'background:rgba(0,0,0,.65);padding:6px 20px;border-radius:20px;'+
-      'opacity:0;transform:translateY(8px);transition:none;';
-
-    /* 2) テキスト・絵文字セット */
-    cnameEl.textContent=card.name;
-    snameEl.textContent=sk.name;
-    descEl.textContent=sk.desc;
-    emojiEl.textContent=card.emoji;
-    emojiEl.style.cssText='font-size:clamp(8rem,20vw,13rem);line-height:1;'+
-      'filter:drop-shadow(0 0 35px '+col+');display:flex;';
-
-    /* 3) 前の画像を消して新しく試みる */
-    var oldImg=charBg.querySelector('img');
-    if(oldImg)oldImg.remove();
-    var img=document.createElement('img');
-    img.style.cssText='position:absolute;width:min(52vw,300px);height:min(52vw,300px);'+
-      'border-radius:14px;object-fit:cover;filter:saturate(1.5) brightness(1.15);'+
-      'box-shadow:0 0 50px '+col+';display:none;';
-    img.onload=function(){img.style.display='block';emojiEl.style.display='none';};
-    img.onerror=function(){img.remove();emojiEl.style.display='flex';};
-    img.src='images/'+card.id+'.png';
-    charBg.appendChild(img);
-
-    /* 4) 2フレーム後にフェードイン（reflow確保） */
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        el.style.transition='opacity .22s';
-        el.style.opacity='1';
-        setTimeout(function(){
-          cnameEl.style.transition='opacity .3s,transform .3s';
-          cnameEl.style.opacity='1';cnameEl.style.transform='translateX(0)';
-          snameEl.style.transition='opacity .4s,transform .4s cubic-bezier(.34,1.56,.64,1)';
-          snameEl.style.opacity='1';snameEl.style.transform='scale(1) rotate(0)';
-          descEl.style.transition='opacity .3s,transform .3s';
-          descEl.style.opacity='1';descEl.style.transform='translateY(0)';
-        },80);
-      });
-    });
-
-    /* 5) 2.8秒後フェードアウト */
-    setTimeout(function(){
-      el.style.transition='opacity .25s';
-      el.style.opacity='0';
-      setTimeout(resolve,280);
-    },2800);
-  });
-}
-
-function triggerBurst(col){
-  const b=document.getElementById('effect-burst');
-  b.style.setProperty('--cc',col||'#b57bee');
-  b.classList.remove('bang');void b.offsetWidth;b.classList.add('bang');
-  setTimeout(()=>b.classList.remove('bang'),650);
-}
-
-// Rush attack with afterimages
-function rushAttack(side){
-  const sc=document.getElementById('sc-'+side);if(!sc)return;
-  const col=side==='p1'?'rgba(0,229,255,.6)':'rgba(255,77,187,.6)';
-  const dir=side==='p1'?1:-1;
-
-  // Spawn 3 fading afterimages
-  const r=sc.getBoundingClientRect();
-  for(let i=0;i<3;i++){
-    setTimeout(()=>{
-      const ghost=document.createElement('div');
-      ghost.className='afterimage';
-      ghost.style.cssText=`left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;--af-col:${col};--af-dur:${.38+i*.08}s;--af-tx:${-dir*(20+i*18)}px;`;
-      // Clone inner image/emoji
-      const srcImg=sc.querySelector('img');
-      const srcEm =sc.querySelector('span');
-      if(srcImg&&srcImg.style.display!=='none'){
-        const gi=document.createElement('img');gi.src=srcImg.src;ghost.appendChild(gi);
-      } else if(srcEm){
-        const ge=document.createElement('div');ge.className='af-emoji';ge.textContent=srcEm.textContent;ghost.appendChild(ge);
-      }
-      document.body.appendChild(ghost);
-      setTimeout(()=>ghost.remove(),700);
-    }, i*55);
-  }
-
-  // Rush animation on the real card
-  sc.classList.remove('rush-p1','rush-p2');
-  void sc.offsetWidth;
-  sc.classList.add(side==='p1'?'rush-p1':'rush-p2');
-  setTimeout(()=>sc.classList.remove('rush-p1','rush-p2'),480);
-}
-
-// Position the battle-stage overlay - centered horizontally, in the lower half of arena
-function positionBattleStage(){
-  const arena=document.getElementById('main-arena');if(!arena)return;
-  const stage=document.getElementById('battle-stage');if(!stage)return;
-  const r=arena.getBoundingClientRect();
-  const cardH=Math.min(r.height*0.75, 280);
-  const cardW=cardH*0.73;
-  // Place so cards sit vertically centered in the arena's empty lower region
-  const totalW=(cardW*2)+document.getElementById('stage-vs').offsetWidth+20+28;
-  const stageTop=r.top + (r.height - cardH)/2;
-  stage.style.cssText=`
-    left:${r.left}px;
-    top:${stageTop}px;
-    width:${r.width}px;
-    height:${cardH}px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:clamp(8px,2vw,20px);
-    position:fixed;
-    pointer-events:none;
-    z-index:200;
-  `;
-  // Size each stage card
-  document.querySelectorAll('.stage-card').forEach(sc=>{
-    sc.style.width=cardW+'px';
-    sc.style.height=cardH+'px';
-    sc.style.fontSize=Math.floor(cardW*0.28)+'px';
+  return new Promise(r=>{
+    const el=document.getElementById('skill-cutin');
+    document.getElementById('cutin-emoji').textContent=sk.ic||card.emoji;
+    document.getElementById('cutin-cname').textContent=card.name;
+    document.getElementById('cutin-sname').textContent=sk.name;
+    document.getElementById('cutin-desc').textContent=sk.desc;
+    el.style.setProperty('--cc',sk.col||'#b57bee');
+    el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
+    setTimeout(r,960*2);
   });
 }
 
@@ -1355,9 +957,6 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
 showScreen('title-screen');
 playBGM('bgm-title');
 updateHi();
-// Stage initially hidden
-document.getElementById('battle-stage').style.display='none';
-window.addEventListener('resize',()=>{if(!document.getElementById('battle-screen').classList.contains('hidden'))positionBattleStage();});
 </script>
 </body>
 </html>

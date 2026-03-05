@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ETERNAL GRIND - BATTLE & COLLECTION</title>
+    <style>
+        :root { --neon-blue: #00f2ff; --neon-pink: #ff00ff; --neon-gold: #ffcc00; --bg-dark: #0a0a0a; }
+        * { box-sizing: border-box; }
+        body { background: #000; color: #fff; font-family: 'Hiragino Kaku Gothic Pro', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
+        
+        #game-outer { position: relative; width: 420px; height: 820px; padding: 10px; transition: transform 0.1s; }
+        #game-container { width: 100%; height: 100%; background: radial-gradient(circle at center, #222 0%, #000 100%); border: 4px solid #444; border-radius: 40px; position: relative; display: flex; flex-direction: column; box-shadow: 0 0 50px rgba(0,0,0,1); overflow: hidden; }
+
+        .screen { display: none; flex-direction: column; align-items: center; padding: 20px; height: 100%; width: 100%; }
+        .active { display: flex; }
+
+        /* バトルステージのレイアウト */
+        .stage { height: 320px; width: 100%; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; }
+        .enemy-area { height: 120px; display: flex; justify-content: center; align-items: center; transition: 0.5s; opacity: 0; transform: translateY(-20px); }
+        .enemy-active { opacity: 1; transform: translateY(0); }
+        .player-area { height: 150px; display: flex; justify-content: center; align-items: center; transition: 0.3s; position: relative; }
+        
+        /* アニメーション */
+        .atk-player { animation: player-atk-anim 0.3s ease-in-out; }
+        @keyframes player-atk-anim { 0% { transform: translateY(0); } 50% { transform: translateY(-30px) scale(1.1); } 100% { transform: translateY(0); } }
+        
+        .dmg-flash { animation: flash-red 0.2s 2; }
+        @keyframes flash-red { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(2) sepia(1) saturate(100) hue-rotate(-50deg); } }
+
+        /* 図鑑（コレクション） */
+        #col-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; height: 400px; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.5); }
+        .col-item { background: #111; border: 1px solid #333; padding: 5px; font-size: 0.7rem; border-radius: 5px; opacity: 0.5; }
+        .col-unlocked { opacity: 1; border-color: var(--neon-blue); box-shadow: 0 0 5px var(--neon-blue); }
+
+        /* 既存ボタン・スロット等のスタイルを統合 */
+        .btn { background: rgba(0,0,0,0.8); border: 2px solid var(--neon-blue); color: var(--neon-blue); padding: 12px; margin: 4px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 95%; transition: 0.1s; font-size: 0.9rem; }
+        .btn:active { transform: scale(0.95); }
+        .aura { position: absolute; width: 140px; height: 140px; border-radius: 50%; filter: blur(25px); opacity: 0.5; transition: 0.5s; }
+        #log { flex: 1; width: 100%; background: rgba(255,255,255,0.05); color: #ccc; font-size: 0.8rem; padding: 10px; border-top: 2px solid #333; overflow-y: auto; text-align: left; }
+        .shake { animation: shake-anim 0.2s ease-in-out; }
+        @keyframes shake-anim { 0%,100%{transform:translate(0,0);} 25%{transform:translate(6px,6px);} 50%{transform:translate(-6px,-6px);} }
+    </style>
+</head>
+<body>
+
+<div id="game-outer">
+    <div id="game-container">
+        <div id="slot-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; display:none; flex-direction:column; align-items:center; justify-content:center;">
+            <h2 id="slot-title" style="color:var(--neon-pink)">DOPING...</h2>
+            <div style="display:flex; gap:10px; font-size:3rem; margin:20px 0;">
+                <div id="r1" style="width:70px; height:90px; background:#111; border:2px solid gold; display:flex; align-items:center; justify-content:center;">?</div>
+                <div id="r2" style="width:70px; height:90px; background:#111; border:2px solid gold; display:flex; align-items:center; justify-content:center;">?</div>
+                <div id="r3" style="width:70px; height:90px; background:#111; border:2px solid gold; display:flex; align-items:center; justify-content:center;">?</div>
+            </div>
+        </div>
+
+        <div id="screen-title" class="screen active">
+            <h1 style="color: var(--neon-pink); font-size: 3rem; margin-bottom: 0;">ETERNAL</h1>
+            <h1 style="color: var(--neon-blue); font-size: 3rem; margin-top: -10px;">GRIND</h1>
+            <button class="btn" onclick="showScreen('screen-select')">START</button>
+            <button class="btn" onclick="openCollection()" style="border-color:var(--neon-gold); color:var(--neon-gold);">COLLECTION</button>
+        </div>
+
+        <div id="screen-col" class="screen">
+            <h2 style="color:var(--neon-gold)">ENCYCLOPEDIA</h2>
+            <div id="col-grid"></div>
+            <button class="btn" onclick="showScreen('screen-title')">BACK</button>
+        </div>
+
+        <div id="screen-select" class="screen">
+            <h3>SELECT GENE</h3>
+            <div style="display:flex; justify-content:space-around; width:100%; margin-top:20px;">
+                <div onclick="hatch('CASINO')">🥚<br><button class="btn">CASINO</button></div>
+                <div onclick="hatch('CYBER')">🥚<br><button class="btn">CYBER</button></div>
+                <div onclick="hatch('SLIME')">🥚<br><button class="btn">SLIME</button></div>
+            </div>
+        </div>
+
+        <div id="screen-main" class="screen">
+            <div id="p-title" style="color:var(--neon-gold); font-size:0.8rem;"></div>
+            <div id="p-name" style="font-size:1.8rem; font-weight:bold;"></div>
+
+            <div class="stage">
+                <div id="enemy-area" class="enemy-area">
+                    <div id="enemy-emoji" style="font-size:60px;">👿</div>
+                </div>
+                <div id="player-area" class="player-area">
+                    <div id="p-aura" class="aura"></div>
+                    <div id="p-emoji" style="font-size:90px; z-index:10;">🐣</div>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:15px; font-weight:bold; color:var(--neon-gold); margin-bottom:10px;">
+                <span>LV.<span id="p-lv">1</span></span>
+                <span>HP:<span id="p-hp">100</span></span>
+                <span>ATK:<span id="p-atk">10</span></span>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; width:100%;">
+                <button class="btn" onclick="action('food')">FEED</button>
+                <button class="btn" onclick="action('train')">TRAIN</button>
+                <button class="btn" onclick="startSlot()" style="border-color:var(--neon-pink); color:var(--neon-pink);">SLOT</button>
+                <button class="btn" onclick="evolve()" style="border-color:var(--neon-gold); color:var(--neon-gold);">GROW</button>
+            </div>
+            <div id="log"></div>
+        </div>
+
+        <div id="screen-over" class="screen">
+            <h1 style="color:red">DEATH</h1>
+            <p id="over-desc"></p>
+            <button class="btn" onclick="location.reload()">RETRY</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- 基本データ ---
+const MONSTER_MASTER = {
+    CASINO: [{lv:1, n:"子猫", e:"🐱"}, {lv:2, n:"チンピラ猫", e:"🕶️"}, {lv:3, n:"用心棒猫", e:"👔"}, {lv:4, n:"スロット猫", e:"🎰"}, {lv:5, n:"カジノ神", e:"💰"}],
+    CYBER: [{lv:1, n:"ビット卵", e:"🥚"}, {lv:2, n:"コードベビ", e:"👾"}, {lv:3, n:"プロトドロ", e:"🤖"}, {lv:4, n:"守護機甲", e:"🛡️"}, {lv:5, n:"機神オメガ", e:"👑"}],
+    SLIME: [{lv:1, n:"ベビスラ", e:"💧"}, {lv:2, n:"スライム", e:"🔵"}, {lv:3, n:"キングスラ", e:"👑"}, {lv:4, n:"メタルスラ", e:"💎"}, {lv:5, n:"プラチナK", e:"✨"}]
+};
+const TITLES = ["風来の", "黄金の", "禁忌の", "伝説の", "光速の", "奈落の"];
+const AURA_COLORS = [{name:"", color:"transparent", power:0}, {name:"白", color:"#fff", power:1}, {name:"青", color:"#36f", power:2}, {name:"緑", color:"#3f3", power:3}, {name:"赤", color:"#f33", power:4}, {name:"虹", color:"rainbow", power:5}];
+
+let state = {
+    type:"", lv:1, n:"", e:"🐣", title:"", 
+    color:AURA_COLORS[0], hp:100, atk:10, food:0, train:0,
+    history: JSON.parse(localStorage.getItem('grind_history') || '[]'),
+    collection: JSON.parse(localStorage.getItem('grind_collection') || '{}') // { '子猫': true }
+};
+
+// --- システム ---
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+function hatch(type) {
+    state.type = type;
+    const d = MONSTER_MASTER[type][0];
+    state.n = d.n; state.e = d.e;
+    showScreen('screen-main');
+    updateUI();
+}
+
+function updateUI() {
+    document.getElementById('p-title').innerText = state.title ? `【${state.title}】` : "";
+    document.getElementById('p-name').innerText = state.n;
+    document.getElementById('p-emoji').innerText = state.e;
+    document.getElementById('p-lv').innerText = state.lv;
+    document.getElementById('p-hp').innerText = state.hp;
+    document.getElementById('p-atk').innerText = state.atk;
+    
+    const aura = document.getElementById('p-aura');
+    const nameDisp = document.getElementById('p-name');
+    
+    if(state.color.name === "虹") {
+        nameDisp.style.background = "linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)";
+        nameDisp.style.webkitBackgroundClip = "text"; nameDisp.style.webkitTextFillColor = "transparent";
+        aura.style.background = "linear-gradient(45deg, red, blue, green)";
+    } else {
+        nameDisp.style.color = state.color.power > 0 ? state.color.color : "#fff";
+        nameDisp.style.webkitTextFillColor = "initial"; nameDisp.style.background = "none";
+        aura.style.background = state.color.color;
+    }
+    aura.style.opacity = state.color.power > 0 ? "0.6" : "0";
+
+    // 図鑑登録
+    if(!state.collection[state.n]) {
+        state.collection[state.n] = true;
+        localStorage.setItem('grind_collection', JSON.stringify(state.collection));
+    }
+}
+
+// --- バトル演出コア ---
+async function startBattle() {
+    const enemyEmoji = ["👿", "👹", "💀", "👽", "👺"][Math.floor(Math.random()*5)];
+    const enemyName = "野生のバグ";
+    document.getElementById('enemy-emoji').innerText = enemyEmoji;
+    document.getElementById('enemy-area').classList.add('enemy-active');
+    addLog(`WARNING: ${enemyName}が乱入してきた！`);
+
+    // 簡易ターン制演出
+    for(let i=0; i<3; i++) {
+        // Player Attack
+        document.getElementById('player-area').classList.add('atk-player');
+        document.getElementById('enemy-area').classList.add('dmg-flash');
+        triggerShake();
+        await new Promise(r => setTimeout(r, 400));
+        document.getElementById('player-area').classList.remove('atk-player');
+        document.getElementById('enemy-area').classList.remove('dmg-flash');
+    }
+
+    addLog(`${enemyName}を撃退！ボーナス獲得！`);
+    state.atk += 20; state.hp += 50;
+    document.getElementById('enemy-area').classList.remove('enemy-active');
+    updateUI();
+}
+
+// --- 進化 ---
+function evolve() {
+    triggerShake();
+    if(Math.random() > (0.75 + state.food * 0.05)) {
+        die("成長の負荷により、存在が消失した。"); return;
+    }
+
+    // 15%の確率でバトル発生
+    if(Math.random() < 0.15) {
+        startBattle();
+    }
+
+    state.lv++;
+    let chance = Math.max(0.05, 0.4 * (1 - (state.lv - 2) * 0.1));
+    if(Math.random() < chance) {
+        const list = MONSTER_MASTER[state.type];
+        const idx = list.findIndex(m => m.n === state.n);
+        if(idx < list.length - 1) { state.n = list[idx+1].n; state.e = list[idx+1].e; addLog(`進化成功！【${state.n}】へ。`); }
+    }
+    
+    // オーラ・二つ名抽選
+    if(Math.random() < 0.4) {
+        let r = Math.random();
+        let nc = r < 0.05 ? AURA_COLORS[5] : r < 0.15 ? AURA_COLORS[4] : r < 0.3 ? AURA_COLORS[3] : r < 0.6 ? AURA_COLORS[2] : AURA_COLORS[1];
+        if(nc.power > state.color.power) state.color = nc;
+    }
+    if(Math.random() < 0.15) state.title = TITLES[Math.floor(Math.random()*TITLES.length)];
+
+    state.hp += 20; state.atk += 5 + state.train;
+    state.food = 0; state.train = 0;
+    updateUI();
+}
+
+// --- その他便利機能 ---
+function action(t) {
+    triggerShake();
+    if(Math.random() < 0.04) { die("不慮の事故により、しにました。"); return; }
+    if(t==='food') { state.food++; addLog("エサを食べた。"); }
+    else { state.train++; addLog("訓練した。"); }
+    updateUI();
+}
+
+function startSlot() {
+    document.getElementById('slot-overlay').style.display='flex';
+    let count = 0;
+    let t = setInterval(() => {
+        const sym = ["7", "💰", "💀", "★"];
+        document.getElementById('r1').innerText = sym[Math.floor(Math.random()*4)];
+        document.getElementById('r2').innerText = sym[Math.floor(Math.random()*4)];
+        document.getElementById('r3').innerText = sym[Math.floor(Math.random()*4)];
+        if(++count > 12) {
+            clearInterval(t);
+            if(document.getElementById('r1').innerText === "💀") die("スロットの呪いで死亡。");
+            else { state.atk += 10; addLog("スロットで力が湧いた。"); }
+            setTimeout(()=>document.getElementById('slot-overlay').style.display='none', 500);
+            updateUI();
+        }
+    }, 100);
+}
+
+function openCollection() {
+    const grid = document.getElementById('col-grid');
+    grid.innerHTML = "";
+    Object.values(MONSTER_MASTER).flat().forEach(m => {
+        const div = document.createElement('div');
+        div.className = `col-item ${state.collection[m.n] ? 'col-unlocked' : ''}`;
+        div.innerHTML = `${state.collection[m.n] ? m.e : '？'}<br>${state.collection[m.n] ? m.n : 'UNKNOWN'}`;
+        grid.appendChild(div);
+    });
+    showScreen('screen-col');
+}
+
+function die(r) {
+    document.getElementById('over-desc').innerText = r;
+    showScreen('screen-over');
+}
+function addLog(m) { const l = document.getElementById('log'); l.innerHTML = `> ${m}<br>`+l.innerHTML; }
+function triggerShake() { document.getElementById('game-outer').classList.add('shake'); setTimeout(()=>document.getElementById('game-outer').classList.remove('shake'), 200); }
+</script>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ETERNAL GRIND - GAMBLE EDITION</title>
+    <style>
+        :root { --neon-blue: #00f2ff; --neon-pink: #ff00ff; --neon-gold: #ffcc00; --bg-dark: #0a0a0a; }
+        body { background: #000; color: #fff; font-family: 'Hiragino Kaku Gothic Pro', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        
+        /* 画面揺れ用コンテナ */
+        #game-outer { position: relative; transition: transform 0.1s; }
+        #game-container { width: 420px; height: 750px; background: radial-gradient(circle, #1a1a1a 0%, #000 100%); border: 4px solid #333; border-radius: 30px; position: relative; display: flex; flex-direction: column; box-shadow: 0 0 50px rgba(0,0,0,1); overflow: hidden; }
+        
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center; }
+        .active { display: flex; }
+
+        /* ボタンの「押した感」演出 */
+        .btn { 
+            background: rgba(0,0,0,0.6); border: 2px solid var(--neon-blue); color: var(--neon-blue); 
+            padding: 12px 20px; margin: 8px; border-radius: 10px; cursor: pointer; font-weight: bold; 
+            min-width: 100px; transition: transform 0.05s, box-shadow 0.2s;
+            user-select: none;
+        }
+        .btn:active { transform: scale(0.92); box-shadow: 0 0 5px var(--neon-blue); }
+        .btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
+
+        /* スロット演出 */
+        #slot-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 2000; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+        .slot-reels { display: flex; gap: 10px; font-size: 4rem; font-weight: bold; color: var(--neon-gold); margin: 20px; }
+        .reel { width: 80px; height: 100px; background: #222; border: 2px solid var(--neon-gold); display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+
+        /* 他、前回のスタイルを継承 */
+        .monster-box { width: 250px; height: 250px; margin: 20px; position: relative; display: flex; justify-content: center; align-items: center; }
+        .aura { position: absolute; width: 100%; height: 100%; border-radius: 50%; filter: blur(20px); opacity: 0.5; z-index: -1; transition: 0.5s; }
+        .monster-emoji { font-size: 100px; z-index: 1; transition: 0.3s; }
+        #cutin { position: absolute; top: 40%; left: -150%; width: 200%; height: 100px; background: linear-gradient(90deg, transparent, var(--neon-pink), transparent); color: white; display: none; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; transform: rotate(-10deg); z-index: 1000; pointer-events: none; }
+        .cutin-anim { display: flex !important; animation: cutin-move 1s ease-in-out forwards; }
+        @keyframes cutin-move { 0% { left: -150%; } 50% { left: -25%; } 100% { left: 150%; } }
+        #log { height: 100px; font-size: 0.8rem; overflow-y: auto; color: #888; padding: 10px; border-top: 1px solid #333; width: 100%; box-sizing: border-box; text-align: left; }
+        .status-row { display: flex; gap: 15px; font-size: 0.85rem; color: var(--neon-gold); margin: 10px 0; }
+        .shake { animation: shake-anim 0.2s ease-in-out; }
+        @keyframes shake-anim { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(4px,4px); } 50% { transform: translate(-4px,-4px); } 75% { transform: translate(4px,-4px); } }
+    </style>
+</head>
+<body>
+
+<div id="game-outer">
+    <div id="game-container">
+        <div id="slot-overlay">
+            <h2 style="color:red">GAMBLE DOPING</h2>
+            <div class="slot-reels">
+                <div id="reel-1" class="reel">?</div>
+                <div id="reel-2" class="reel">?</div>
+                <div id="reel-3" class="reel">?</div>
+            </div>
+            <div id="slot-status">READY...</div>
+        </div>
+
+        <div id="cutin">RAINBOW!!</div>
+
+        <div id="screen-title" class="screen active">
+            <h1 style="color: var(--neon-pink); font-style: italic;">ETERNAL<br>GRIND</h1>
+            <button class="btn" onclick="startGame()">GAME START</button>
+            <div id="history" style="font-size:0.7rem; color:#555; height:100px; overflow:auto; margin-top:20px;"></div>
+        </div>
+
+        <div id="screen-select" class="screen">
+            <h2>系統を選択せよ</h2>
+            <div style="display:flex; justify-content:space-around; width:100%;">
+                <div onclick="hatch('CASINO')" style="cursor:pointer">🥚<br><button class="btn">CASINO</button></div>
+                <div onclick="hatch('CYBER')" style="cursor:pointer">🥚<br><button class="btn">CYBER</button></div>
+                <div onclick="hatch('SLIME')" style="cursor:pointer">🥚<br><button class="btn">SLIME</button></div>
+            </div>
+        </div>
+
+        <div id="screen-main" class="screen">
+            <div id="title-display" style="color: var(--neon-gold); font-size: 0.9rem;"></div>
+            <div id="name-display" style="font-size: 1.8rem; font-weight: bold;"></div>
+            <div id="color-tag" style="font-size: 0.8rem; margin-top:4px;"></div>
+            
+            <div class="monster-box">
+                <div id="aura-effect" class="aura"></div>
+                <div id="monster-emoji" class="monster-emoji">🐣</div>
+            </div>
+
+            <div class="status-row">
+                <span>LV: <span id="lv-val">1</span></span>
+                <span>HP: <span id="hp-val">100</span></span>
+                <span>ATK: <span id="atk-val">10</span></span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; width: 100%;">
+                <button class="btn" onclick="action('food')">エサ</button>
+                <button class="btn" onclick="action('train')">訓練</button>
+                <button class="btn" onclick="startSlot()" style="border-color: var(--neon-pink); color: var(--neon-pink);">スロット</button>
+                <button class="btn" onclick="evolve()" style="border-color: var(--neon-gold); color: var(--neon-gold);">成 長</button>
+            </div>
+            <div id="log"></div>
+        </div>
+
+        <div id="screen-over" class="screen">
+            <h2 id="over-msg" style="color: #ff4444;">GAME OVER</h2>
+            <p id="over-desc" style="font-size:0.8rem;"></p>
+            <button class="btn" onclick="location.reload()">タイトルへ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- 音響設定 ---
+const sounds = {
+    bgmTitle: new Audio('sounds/bgm_title.mp3'),
+    bgmMain: new Audio('sounds/bgm_main.mp3'),
+    click: new Audio('sounds/se_click.mp3'),
+    grow: new Audio('sounds/se_grow.mp3')
+};
+Object.values(sounds).forEach(s => { s.load(); s.volume = 0.5; });
+sounds.bgmTitle.loop = true;
+sounds.bgmMain.loop = true;
+
+function playSound(key) {
+    const s = sounds[key];
+    if(s) { s.currentTime = 0; s.play().catch(()=>{}); }
+}
+
+function switchBGM(key) {
+    sounds.bgmTitle.pause();
+    sounds.bgmMain.pause();
+    if(sounds[key]) sounds[key].play().catch(()=>{});
+}
+
+// --- ゲームデータ ---
+const TITLES = ["風来の", "黄金の", "奈落の", "禁忌の", "ただならぬ", "伝説の", "光速の", "超越した", "迷子の", "幸運の"];
+const AURA_COLORS = [
+    { name: "", color: "transparent", power: 0 },
+    { name: "白", color: "#fff", power: 1 },
+    { name: "青", color: "#36f", power: 2 },
+    { name: "緑", color: "#3f3", power: 3 },
+    { name: "赤", color: "#f33", power: 4 },
+    { name: "虹", color: "rainbow", power: 5 }
+];
+const MONSTER_MASTER = {
+    CASINO: [{lv:1, name:"子猫", emo:"🐱"}, {lv:2, name:"チンピラ猫", emo:"🕶️"}, {lv:3, name:"用心棒猫", emo:"👔"}, {lv:4, name:"スロット猫", emo:"🎰"}, {lv:5, name:"カジノ神", emo:"💰"}],
+    CYBER: [{lv:1, name:"ビット卵", emo:"🥚"}, {lv:2, name:"コードベビ", emo:"👾"}, {lv:3, name:"プロトドロ", emo:"🤖"}, {lv:4, name:"守護機甲", emo:"🛡️"}, {lv:5, name:"機神オメガ", emo:"👑"}],
+    SLIME: [{lv:1, name:"ベビスラ", emo:"💧"}, {lv:2, name:"スライム", emo:"🔵"}, {lv:3, name:"キングスラ", emo:"👑"}, {lv:4, name:"メタルスラ", emo:"💎"}, {lv:5, name:"プラチナK", emo:"✨"}]
+};
+
+let state = {
+    type: "", lv: 1, name: "", emo: "🐣", title: "", 
+    color: AURA_COLORS[0], hp: 100, atk: 10, food: 0, train: 0,
+    history: JSON.parse(localStorage.getItem('grind_history') || '[]')
+};
+
+// --- 基本機能 ---
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+function startGame() {
+    playSound('click');
+    switchBGM('bgmTitle');
+    showScreen('screen-select');
+}
+
+function hatch(type) {
+    playSound('click');
+    switchBGM('bgmMain');
+    state.type = type;
+    const data = MONSTER_MASTER[type][0];
+    state.name = data.name; state.emo = data.emo;
+    showScreen('screen-main');
+    updateUI();
+    addLog(`運命の扉が開いた。${type}系を選んだようだ。`);
+}
+
+function action(type) {
+    playSound('click');
+    triggerShake();
+    if(Math.random() < 0.04) {
+        die(type === 'food' ? "暴飲暴食の末、胃袋が四次元に繋がって消滅した。" : "過酷な訓練で筋肉が原子レベルで分解された。");
+        return;
+    }
+    if(type === 'food') { state.food++; addLog("ムシャムシャ...生存率が少しマシになった。"); }
+    else { state.train++; addLog("ハァハァ...進化への執念を燃やしている。"); }
+    updateUI();
+}
+
+// --- スロット演出 ---
+function startSlot() {
+    playSound('click');
+    document.getElementById('slot-overlay').style.display = 'flex';
+    let reels = [document.getElementById('reel-1'), document.getElementById('reel-2'), document.getElementById('reel-3')];
+    let symbols = ["7", "💰", "💀", "★", "🔥"];
+    let count = 0;
+    
+    let timer = setInterval(() => {
+        reels.forEach(r => r.innerText = symbols[Math.floor(Math.random()*symbols.length)]);
+        count++;
+        if(count > 15) {
+            clearInterval(timer);
+            resolveSlot(reels);
+        }
+    }, 100);
+}
+
+function resolveSlot(reels) {
+    let r1 = reels[0].innerText;
+    let r2 = reels[1].innerText;
+    let r3 = reels[2].innerText;
+
+    setTimeout(() => {
+        if(r1 === "7" && r2 === "7" && r3 === "7") {
+            state.hp += 500; state.atk += 100;
+            addLog("JACKPOT!! 全能力が極限突破した！");
+            playCutin("SUPER JACKPOT!!");
+        } else if(r1 === "💀" || r2 === "💀" || r3 === "💀") {
+            die("スロットの罰ゲームで魂を回収された。");
+        } else {
+            state.atk += 10;
+            addLog("小当たり。少しだけ力が湧いた。");
+        }
+        document.getElementById('slot-overlay').style.display = 'none';
+        updateUI();
+    }, 500);
+}
+
+// --- 進化・UI・その他 ---
+function evolve() {
+    playSound('grow');
+    triggerShake();
+    let survival = 0.75 + (state.food * 0.05);
+    if(Math.random() > survival) {
+        die("成長に失敗した。これ以上、この世に留まることはできない。");
+        return;
+    }
+
+    state.lv++;
+    let evoChance = Math.max(0.05, 0.4 * (1 - (state.lv - 2) * 0.1));
+    if(Math.random() < evoChance) {
+        const list = MONSTER_MASTER[state.type];
+        const idx = list.findIndex(m => m.name === state.name);
+        if(idx < list.length - 1) {
+            state.name = list[idx + 1].name;
+            state.emo = list[idx + 1].emo;
+            addLog(`【種族進化】${state.name}へ昇華。`);
+        }
+    }
+
+    if(Math.random() < 0.4) {
+        let r = Math.random();
+        let nc = r < 0.05 ? AURA_COLORS[5] : r < 0.15 ? AURA_COLORS[4] : r < 0.3 ? AURA_COLORS[3] : r < 0.6 ? AURA_COLORS[2] : AURA_COLORS[1];
+        if(nc.power > state.color.power) {
+            state.color = nc;
+            if(nc.name === "虹") playCutin("RAINBOW EVOLUTION!!");
+        }
+    }
+    if(Math.random() < 0.15) state.title = TITLES[Math.floor(Math.random()*TITLES.length)];
+
+    state.hp += 20; state.atk += 5;
+    state.food = 0; state.train = 0;
+    updateUI();
+}
+
+function triggerShake() {
+    const c = document.getElementById('game-outer');
+    c.classList.add('shake');
+    setTimeout(() => c.classList.remove('shake'), 200);
+}
+
+function die(reason) {
+    state.history.unshift({ date: new Date().toLocaleTimeString(), name: `${state.title}${state.name}`, lv: state.lv });
+    localStorage.setItem('grind_history', JSON.stringify(state.history.slice(0, 10)));
+    document.getElementById('over-desc').innerText = reason;
+    showScreen('screen-over');
+}
+
+function updateUI() {
+    const n = document.getElementById('name-display');
+    const a = document.getElementById('aura-effect');
+    document.getElementById('title-display').innerText = state.title ? `【${state.title}】` : "";
+    document.getElementById('color-tag').innerText = state.color.name ? `【${state.color.name}】` : "";
+    document.getElementById('monster-emoji').innerText = state.emo;
+    document.getElementById('lv-val').innerText = state.lv;
+    document.getElementById('hp-val').innerText = state.hp;
+    document.getElementById('atk-val').innerText = state.atk;
+    n.innerText = state.name;
+
+    if(state.color.name === "虹") {
+        n.style.background = "linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)";
+        n.style.webkitBackgroundClip = "text"; n.style.webkitTextFillColor = "transparent";
+        a.style.background = "linear-gradient(45deg, red, blue, green)";
+    } else {
+        n.style.color = state.color.color; n.style.webkitTextFillColor = "initial";
+        a.style.background = state.color.color;
+    }
+    a.style.filter = `blur(20px) drop-shadow(0 0 10px ${state.color.color})`;
+}
+
+function addLog(msg) {
+    const l = document.getElementById('log');
+    l.innerHTML = `> ${msg}<br>` + l.innerHTML;
+}
+
+function playCutin(txt) {
+    const c = document.getElementById('cutin');
+    c.innerText = txt; c.classList.add('cutin-anim');
+    setTimeout(() => c.classList.remove('cutin-anim'), 1000);
+}
+
+function renderHistory() {
+    document.getElementById('history').innerHTML = "<b>[記録]</b><br>" + state.history.map(x => `・Lv.${x.lv} ${x.name}`).join("<br>");
+}
+renderHistory();
+</script>
+</body>
+</html>

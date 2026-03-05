@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ETERNAL GRIND - FINAL VERSION</title>
+    <style>
+        :root { --neon-blue: #00f2ff; --neon-pink: #ff00ff; --neon-gold: #ffcc00; --bg-dark: #0a0a0a; }
+        body { background: #000; color: #fff; font-family: 'Hiragino Kaku Gothic Pro', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        #game-container { width: 420px; height: 750px; background: radial-gradient(circle, #1a1a1a 0%, #000 100%); border: 4px solid #333; border-radius: 30px; position: relative; display: flex; flex-direction: column; box-shadow: 0 0 50px rgba(0,0,0,1); }
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center; }
+        .active { display: flex; }
+        .egg-container { display: flex; justify-content: space-around; width: 100%; margin-top: 20px; }
+        .egg-item { display: flex; flex-direction: column; align-items: center; }
+        .egg-visual { font-size: 50px; margin-bottom: 10px; animation: bounce 2s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .btn { background: rgba(0,0,0,0.6); border: 2px solid var(--neon-blue); color: var(--neon-blue); padding: 12px 20px; margin: 8px; border-radius: 10px; cursor: pointer; font-weight: bold; min-width: 100px; }
+        .btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
+        .monster-box { width: 250px; height: 250px; margin: 20px; position: relative; display: flex; justify-content: center; align-items: center; }
+        .aura { position: absolute; width: 100%; height: 100%; border-radius: 50%; filter: blur(20px); opacity: 0.5; z-index: -1; transition: 0.5s; }
+        .monster-emoji { font-size: 100px; z-index: 1; transition: 0.3s; }
+        /* 修正：演出用カットイン */
+        #cutin { position: absolute; top: 40%; left: -150%; width: 200%; height: 100px; background: linear-gradient(90deg, transparent, var(--neon-pink), transparent); color: white; display: none; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; transform: rotate(-10deg); z-index: 1000; pointer-events: none; }
+        .cutin-anim { display: flex !important; animation: cutin-move 1s ease-in-out forwards; }
+        @keyframes cutin-move { 0% { left: -150%; } 50% { left: -25%; } 100% { left: 150%; } }
+        #log { height: 100px; font-size: 0.8rem; overflow-y: auto; color: #888; padding: 10px; border-top: 1px solid #333; width: 100%; box-sizing: border-box; text-align: left; }
+        .status-row { display: flex; gap: 15px; font-size: 0.85rem; color: var(--neon-gold); margin: 10px 0; }
+        #history { max-height: 120px; overflow-y: auto; font-size: 0.7rem; width: 100%; background: rgba(255,255,255,0.05); padding: 5px; color: #666; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="cutin">RAINBOW!!</div>
+
+    <div id="screen-title" class="screen active">
+        <h1 style="color: var(--neon-pink);">ETERNAL<br>GRIND</h1>
+        <button class="btn" onclick="showScreen('screen-select')">GAME START</button>
+        <div id="history"></div>
+    </div>
+
+    <div id="screen-select" class="screen">
+        <h2>系統を選択せよ</h2>
+        <div class="egg-container">
+            <div class="egg-item"> <div class="egg-visual">🥚</div> <button class="btn" onclick="hatch('CASINO')">CASINO</button> </div>
+            <div class="egg-item"> <div class="egg-visual">🥚</div> <button class="btn" onclick="hatch('CYBER')">CYBER</button> </div>
+            <div class="egg-item"> <div class="egg-visual">🥚</div> <button class="btn" onclick="hatch('SLIME')">SLIME</button> </div>
+        </div>
+    </div>
+
+    <div id="screen-main" class="screen">
+        <div id="title-display" style="color: var(--neon-gold); font-size: 1rem; min-height: 1.2rem;"></div>
+        <div id="name-display" style="font-size: 2rem; font-weight: bold;"></div>
+        <div id="color-tag" style="font-size: 0.9rem; min-height: 1.1rem; margin-top: 5px;"></div>
+        
+        <div class="monster-box">
+            <div id="aura-effect" class="aura"></div>
+            <div id="monster-emoji" class="monster-emoji">🐣</div>
+        </div>
+
+        <div class="status-row">
+            <span>LV: <span id="lv-val">1</span></span>
+            <span>HP: <span id="hp-val">100</span></span>
+            <span>ATK: <span id="atk-val">10</span></span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; width: 100%;">
+            <button class="btn" onclick="action('food')">エサ</button>
+            <button class="btn" onclick="action('train')">訓練</button>
+            <button class="btn" onclick="evolve()" style="grid-column: span 2; border-color: var(--neon-gold); color: var(--neon-gold);">成 長 (EVOLVE)</button>
+        </div>
+        <div id="log">運命を刻め...</div>
+    </div>
+
+    <div id="screen-over" class="screen">
+        <h2 id="over-msg" style="color: #ff4444;">死亡</h2>
+        <p id="over-desc"></p>
+        <button class="btn" onclick="location.reload()">タイトルへ</button>
+    </div>
+</div>
+
+<script>
+const TITLES = ["風来の", "黄金の", "奈落の", "禁忌の", "ただならぬ", "爆裂の", "伝説の", "社畜の", "光速の", "虚無を識る", "至高の", "週末の", "呪われし", "超越した", "迷子の", "絶対零度の", "裏切りの", "幸運の", "限界突破した", "うっかり"];
+const AURA_COLORS = [
+    { name: "", color: "white", power: 0 }, // color: "transparent"
+    { name: "白", color: "#ffffff", power: 1 },
+    { name: "青", color: "#3366ff", power: 2 },
+    { name: "緑", color: "#33ff33", power: 3 },
+    { name: "赤", color: "#ff3333", power: 4 },
+    { name: "虹", color: "rainbow", power: 5 }
+];
+const MONSTER_MASTER = {
+    CASINO: [{lv:1, name:"子猫", emo:"🐱"}, {lv:2, name:"チンピラ猫", emo:"🕶️"}, {lv:3, name:"用心棒猫", emo:"👔"}, {lv:4, name:"スロット猫", emo:"🎰"}, {lv:5, name:"カジノ神", emo:"💰"}],
+    CYBER: [{lv:1, name:"ビット卵", emo:"🥚"}, {lv:2, name:"コードベビ", emo:"👾"}, {lv:3, name:"プロトドロ", emo:"🤖"}, {lv:4, name:"守護機甲", emo:"🛡️"}, {lv:5, name:"機神オメガ", emo:"👑"}],
+    SLIME: [{lv:1, name:"ベビスラ", emo:"💧"}, {lv:2, name:"スライム", emo:"🔵"}, {lv:3, name:"キングスラ", emo:"👑"}, {lv:4, name:"メタルスラ", emo:"💎"}, {lv:5, name:"プラチナK", emo:"✨"}]
+};
+
+let state = {
+    type: "", lv: 1, name: "", emo: "🐣", title: "", 
+    color: AURA_COLORS[0],
+    hp: 100, atk: 10, food: 0, train: 0,
+    history: JSON.parse(localStorage.getItem('grind_history') || '[]')
+};
+
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+function hatch(type) {
+    state.type = type;
+    const data = MONSTER_MASTER[type][0];
+    state.name = data.name;
+    state.emo = data.emo;
+    showScreen('screen-main');
+    updateUI();
+    addLog(`${type}系の卵から何かが生まれた。`);
+}
+
+function action(type) {
+    if(Math.random() < 0.05) {
+        die(type === 'food' ? "うっかり暴飲暴食をしてしまい、しにました。" : "うっかりトレーニングし過ぎで、しにました。");
+        return;
+    }
+    if(type === 'food') { state.food++; addLog("エサを食べて生存率が上がった。"); }
+    else { state.train++; addLog("トレーニングに成功しました。"); }
+    updateUI();
+}
+
+function evolve() {
+    let survivalRate = 0.75 + (state.food * 0.05);
+    if(Math.random() > survivalRate) {
+        die("成長に失敗しました。どうやらもうこれ以上成長できないようです。");
+        return;
+    }
+
+    state.lv++;
+    // 進化確率：40%から始まり、Lvごとに1割ずつ減少
+    let evoChance = Math.max(0.05, 0.4 * (1 - (state.lv - 2) * 0.1));
+    
+    if(Math.random() < evoChance) {
+        const list = MONSTER_MASTER[state.type];
+        const idx = list.findIndex(m => m.name === state.name);
+        if(idx < list.length - 1) {
+            state.name = list[idx + 1].name;
+            state.emo = list[idx + 1].emo;
+            addLog(`種族進化！【${state.name}】へ。`);
+        }
+    }
+
+    if(Math.random() < 0.4) {
+        let r = Math.random();
+        let newColor = r < 0.05 ? AURA_COLORS[5] : r < 0.15 ? AURA_COLORS[4] : r < 0.3 ? AURA_COLORS[3] : r < 0.6 ? AURA_COLORS[2] : AURA_COLORS[1];
+        if(newColor.power > state.color.power) {
+            state.color = newColor;
+            if(newColor.name === "虹") playCutin("RAINBOW EVOLUTION!!");
+        }
+    }
+
+    if(Math.random() < 0.15) {
+        state.title = TITLES[Math.floor(Math.random() * TITLES.length)];
+    }
+
+    state.hp += 20 + Math.floor(Math.random()*30);
+    state.atk += 5 + state.train;
+    state.food = 0; state.train = 0;
+    updateUI();
+}
+
+function die(reason) {
+    document.getElementById('over-desc').innerText = reason + "\nそして、そのまま天寿をまっとうしましたとさ。";
+    state.history.unshift({ date: new Date().toLocaleTimeString(), name: `${state.title}${state.name}`, lv: state.lv });
+    localStorage.setItem('grind_history', JSON.stringify(state.history.slice(0, 10)));
+    showScreen('screen-over');
+}
+
+function updateUI() {
+    const nameDisp = document.getElementById('name-display');
+    const aura = document.getElementById('aura-effect');
+    
+    document.getElementById('title-display').innerText = state.title ? `【${state.title}】` : "";
+    document.getElementById('color-tag').innerText = state.color.name ? `【${state.color.name}】` : "";
+    document.getElementById('monster-emoji').innerText = state.emo;
+    document.getElementById('lv-val').innerText = state.lv;
+    document.getElementById('hp-val').innerText = state.hp;
+    document.getElementById('atk-val').innerText = state.atk;
+
+    nameDisp.innerText = state.name;
+    if(state.color.name === "虹") {
+        nameDisp.style.background = "linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)";
+        nameDisp.style.webkitBackgroundClip = "text";
+        nameDisp.style.webkitTextFillColor = "transparent";
+        aura.style.background = "linear-gradient(45deg, red, blue, green)";
+    } else {
+        nameDisp.style.color = state.color.color;
+        nameDisp.style.webkitTextFillColor = "initial";
+        nameDisp.style.background = "none";
+        aura.style.background = state.color.color;
+    }
+    aura.style.filter = `blur(20px) drop-shadow(0 0 10px ${state.color.color})`;
+}
+
+function addLog(msg) {
+    const log = document.getElementById('log');
+    log.innerHTML = `> ${msg}<br>` + log.innerHTML;
+}
+
+function playCutin(text) {
+    const c = document.getElementById('cutin');
+    c.innerText = text;
+    c.classList.add('cutin-anim');
+    setTimeout(() => c.classList.remove('cutin-anim'), 1000);
+}
+
+function renderHistory() {
+    const h = document.getElementById('history');
+    h.innerHTML = "<b>[進化履歴]</b><br>" + state.history.map(x => `${x.date} Lv.${x.lv} ${x.name}`).join("<br>");
+}
+renderHistory();
+</script>
+</body>
+</html>
